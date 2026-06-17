@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ope
+  labels:
+    app.kubernetes.io/part-of: ope
+    cluster.midwestniceuas.com/name: octoputer
