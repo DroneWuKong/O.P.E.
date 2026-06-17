@@ -1,0 +1,10 @@
+{
+  "query": "How should O.P.E. stage its MVP on the Octoputer k3s cluster?",
+  "project": "ope-core",
+  "mode": "auto",
+  "allow_search": true,
+  "allow_tools": false,
+  "budget": "medium",
+  "latency": "normal",
+  "debug": true
+}
