@@ -1,0 +1,108 @@
+name: Octo — Deploy OPE
+
+# Manual cluster-mutating deploy for O.P.E. Core on the Octoputer k3s cluster.
+# This must run on the octo-cp-labelled control-plane runner so kubectl can use
+# the local k3s kubeconfig. Keep provider credentials in GitHub secrets only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: ope-core image to deploy
+        default: ghcr.io/dronewukong/ope-core:latest
+        required: false
+
+concurrency:
+  group: octo-ope-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ${{ fromJSON(vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]') }}
+    env:
+      NS: ope
+      KUBECONFIG: ${{ vars.KUBECONFIG || '/etc/rancher/k3s/k3s.yaml' }}
+      OPE_IMAGE: ${{ github.event.inputs.image || 'ghcr.io/dronewukong/ope-core:latest' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve kubectl
+        run: |
+          set -e
+          if command -v kubectl >/dev/null; then KUBECTL=kubectl
+          elif command -v k3s >/dev/null; then KUBECTL="k3s kubectl"
+          else echo "::error::No kubectl/k3s on this runner."; exit 1
+          fi
+          echo "KUBECTL=$KUBECTL" >> "$GITHUB_ENV"
+          $KUBECTL version --output=yaml >/dev/null 2>&1 || { echo "::error::kubectl cannot reach the cluster using KUBECONFIG=$KUBECONFIG."; exit 1; }
+
+      - name: Validate required secrets
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          : "${POSTGRES_PASSWORD:?set GitHub secret OPE_POSTGRES_PASSWORD}"
+          : "${OPENAI_API_KEY:?set GitHub secret OPENAI_API_KEY}"
+          : "${ANTHROPIC_API_KEY:?set GitHub secret ANTHROPIC_API_KEY}"
+          : "${GEMINI_API_KEY:?set GitHub secret GEMINI_API_KEY}"
+          : "${MISTRAL_API_KEY:?set GitHub secret MISTRAL_API_KEY}"
+
+      - name: Namespace and secrets
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
+        run: |
+          set -e
+          $KUBECTL apply -f k8s/namespace.yaml
+          $KUBECTL -n "$NS" create secret generic ope-db \
+            --from-literal=postgres-password="$POSTGRES_PASSWORD" \
+            --from-literal=postgres-dsn="postgresql://ope:${POSTGRES_PASSWORD}@postgres.${NS}.svc.cluster.local:5432/ope" \
+            --dry-run=client -o yaml | $KUBECTL apply -f -
+          $KUBECTL -n "$NS" create secret generic ope-provider-env \
+            --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" \
+            --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+            --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
+            --from-literal=MISTRAL_API_KEY="$MISTRAL_API_KEY" \
+            --from-literal=LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}" \
+            --dry-run=client -o yaml | $KUBECTL apply -f -
+
+      - name: Apply data services
+        run: |
+          set -e
+          $KUBECTL apply -f k8s/postgres.yaml
+          $KUBECTL apply -f k8s/redis.yaml
+          $KUBECTL -n "$NS" rollout status deploy/postgres --timeout=180s
+          $KUBECTL -n "$NS" rollout status deploy/redis --timeout=120s
+
+      - name: Run database migration
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
+        run: |
+          set -e
+          $KUBECTL -n "$NS" exec deploy/postgres -- env PGPASSWORD="$POSTGRES_PASSWORD" \
+            psql -U ope -d ope -f - < migrations/001_initial_schema.sql
+
+      - name: Apply LiteLLM and OPE Core
+        run: |
+          set -e
+          $KUBECTL apply -f k8s/litellm.yaml
+          $KUBECTL apply -f k8s/ope-core.yaml
+          $KUBECTL -n "$NS" set image deploy/ope-core ope-core="$OPE_IMAGE"
+          $KUBECTL -n "$NS" rollout restart deploy/litellm
+          $KUBECTL -n "$NS" rollout restart deploy/ope-core
+          $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=180s
+          $KUBECTL -n "$NS" rollout status deploy/ope-core --timeout=180s
+
+      - name: Smoke endpoints from inside cluster
+        run: |
+          set -e
+          $KUBECTL -n "$NS" run ope-smoke --rm -i --restart=Never \
+            --image=curlimages/curl:8.11.1 -- \
+            sh -c "curl -fsS http://ope-core.ope.svc.cluster.local:8080/health && curl -fsS http://ope-core.ope.svc.cluster.local:8080/ready"

@@ -52,3 +52,12 @@ routes:
       - gemini-main
     web_allowed: false
     verify: false
+
+  tool_action:
+    planner_model: openai-mini
+    primary_model: openai-main
+    fallbacks:
+      - claude-main
+    search_enabled: true
+    tools_enabled: true
+    verify: true

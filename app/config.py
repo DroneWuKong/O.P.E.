@@ -8,9 +8,12 @@ class Settings(BaseSettings):
     ope_env: str = 'local'
     ope_service_name: str = 'ope-core'
     ope_default_project: str = 'ope-core'
+    ope_skip_external_init: bool = False
+    ope_disable_event_logging: bool = False
 
     litellm_base_url: str = 'http://litellm:4000'
     litellm_model: str = 'deep_reasoning'
+    litellm_api_key: str | None = None
 
     postgres_dsn: str = 'postgresql://ope:ope-local-dev@postgres:5432/ope'
     redis_url: str = 'redis://redis:6379/0'

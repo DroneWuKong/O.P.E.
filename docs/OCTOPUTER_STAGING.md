@@ -26,6 +26,9 @@ kubectl apply -f k8s/namespace.yaml
 
 ## MVP services
 
+For manual kubectl testing, create `ope-db` and `ope-provider-env` from a private
+copy of `k8s/secrets.example.yaml` first. Do not apply the example file as-is.
+
 ```bash
 kubectl apply -f k8s/postgres.yaml
 kubectl apply -f k8s/redis.yaml
@@ -33,10 +36,27 @@ kubectl apply -f k8s/litellm.yaml
 kubectl apply -f k8s/ope-core.yaml
 ```
 
+## Manual Workflow
+
+Use **Octo - Deploy OPE** in GitHub Actions for normal staging deploys. It runs
+on `vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]'`, creates `ope-db` and
+`ope-provider-env` from GitHub secrets, applies manifests, runs
+`migrations/001_initial_schema.sql`, and verifies `/health` plus `/ready` from
+inside the cluster.
+
+The deploy workflow defaults to `ghcr.io/dronewukong/ope-core:latest`, which is
+published by **Build OPE Core Image** after pushes to `main`. For safer manual
+staging, pass a specific tag or `sha-*` image to the deploy workflow input.
+
+## Approval Policy
+
+Tool routes are gated by `policies/approval-policy.yaml`. The current MVP uses a
+request-level approval token (`tool_action_approved`) so `/plan` can explain a
+tool route while `/ask` rejects unapproved tool actions before memory or model
+side effects.
+
 ## To-do before real deployment
 
-- Add a GitHub Actions workflow like `Octo — Deploy OPE`.
-- Pin it to `vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]'`.
 - Create provider environment values as GitHub Actions secrets, not repo files.
 - Create Kubernetes secrets from the workflow at deploy time.
 - Add an ingress or NodePort only after the internal service works.

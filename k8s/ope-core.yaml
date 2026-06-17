@@ -26,13 +26,24 @@ spec:
               value: ope-core
             - name: LITELLM_BASE_URL
               value: http://litellm.ope.svc.cluster.local:4000
+            - name: LITELLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ope-provider-env
+                  key: LITELLM_MASTER_KEY
+                  optional: true
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: ope-db
+                  key: postgres-dsn
             - name: REDIS_URL
               value: redis://redis.ope.svc.cluster.local:6379/0
           ports:
             - containerPort: 8080
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10

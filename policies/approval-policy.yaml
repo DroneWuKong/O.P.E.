@@ -1,0 +1,7 @@
+rules:
+  - name: tool_action_manual_approval
+    description: Tool actions require explicit caller approval before O.P.E. may ask a model to plan execution.
+    token: tool_action_approved
+    applies_to_routes:
+      - tool_action
+    default_decision: deny

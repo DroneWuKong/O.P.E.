@@ -56,20 +56,91 @@ Then test:
 
 ```bash
 curl -s http://localhost:8080/health
+curl -s http://localhost:8080/ready
+curl -s http://localhost:8080/models/status
+curl -s http://localhost:8080/memory/stats
+curl -s 'http://localhost:8080/events/recent?project=ope-core&limit=10'
+curl -s http://localhost:8080/routes
+curl -s http://localhost:8080/approvals
+curl -s http://localhost:8080/plan \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"please deploy this","allow_tools":true}'
+curl -s http://localhost:8080/plan \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"please deploy this","allow_tools":true,"approval_tokens":["tool_action_approved"]}'
 curl -s http://localhost:8080/ask \
   -H 'Content-Type: application/json' \
   -d @examples/ask.json
+curl -s http://localhost:8080/memory/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Octoputer","project":"ope-core"}'
 ```
+
+## API endpoints
+
+- `GET /health`
+- `GET /ready`
+- `GET /models/status`
+- `GET /memory/stats`
+- `GET /events/recent`
+- `GET /routes`
+- `GET /approvals`
+- `POST /plan`
+- `POST /ask`
+- `POST /memory/write`
+- `POST /memory/search`
+
+Memory is backed by Postgres with pgvector enabled. Provider cooldown/status
+state is backed by Redis. `/ready` checks Postgres and Redis, while
+`/models/status` returns provider health plus model performance rollups. `/ask`
+writes query events and model success/failure rollups to Postgres unless
+`OPE_DISABLE_EVENT_LOGGING=true`.
+
+`/routes` exposes the loaded routing policy, and `/plan` previews the route O.P.E.
+would choose without calling LiteLLM or writing memory.
+
+`/events/recent` exposes recent query events for audit/debugging, and
+`/memory/stats` summarizes persisted memory by project, type, and scope.
+
+Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
+classified without approval, but `/ask` rejects it until the request includes the
+matching approval token, currently `tool_action_approved`.
+
+## Smoke tests
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+## CI and images
+
+- **CI** runs smoke tests, policy consistency checks, YAML parsing, and a Docker
+  build on pull requests, pushes to `main`, and manual dispatch.
+- **Build OPE Core Image** publishes `ghcr.io/dronewukong/ope-core` on pushes to
+  `main`, version tags, and manual dispatch.
 
 ## Octoputer staging
 
-```bash
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/secrets.example.yaml
-kubectl apply -f k8s/postgres.yaml
-kubectl apply -f k8s/redis.yaml
-kubectl apply -f k8s/litellm.yaml
-kubectl apply -f k8s/ope-core.yaml
-```
+Use the manual GitHub Actions workflow **Octo — Deploy OPE**. It follows the
+Octoputer control-plane runner pattern from `DroneWuKong/Ai-Project`: the job is
+pinned to `vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]'`, defaults
+`KUBECONFIG` to `/etc/rancher/k3s/k3s.yaml`, creates Kubernetes secrets from
+GitHub secrets, applies the `ope` namespace resources, runs the database
+migration, and smoke-tests `/health` plus `/ready` from inside the cluster.
+By default it deploys `ghcr.io/dronewukong/ope-core:latest`; the manual `image`
+input can pin a tag or `sha-*` image.
+
+Required GitHub secrets:
+
+- `OPE_POSTGRES_PASSWORD`
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GEMINI_API_KEY`
+- `MISTRAL_API_KEY`
+- `LITELLM_MASTER_KEY` optional
+
+For manual kubectl testing only, copy `k8s/secrets.example.yaml` outside the
+repo, replace every placeholder, and apply that private copy.
 
 Replace all placeholder secrets before putting this anywhere serious. The repo is public, because apparently we enjoy danger, so do not commit actual keys.

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS memory_items (
   value JSONB NOT NULL DEFAULT '{}'::jsonb,
   summary TEXT NOT NULL,
   tags TEXT[] DEFAULT '{}',
+  embedding VECTOR(1536),
   importance REAL DEFAULT 0.5,
   confidence REAL DEFAULT 0.5,
   source TEXT,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS query_events (
   success BOOLEAN,
   latency_ms INTEGER,
   estimated_cost NUMERIC,
+  failure_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -49,3 +51,10 @@ CREATE TABLE IF NOT EXISTS model_stats (
 
 CREATE INDEX IF NOT EXISTS idx_memory_project_type ON memory_items(project_id, memory_type);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_items USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_memory_text ON memory_items
+  USING GIN(to_tsvector('english', summary || ' ' || array_to_string(tags, ' ')));
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_project_key ON memory_items(project_id, memory_key)
+  WHERE memory_key IS NOT NULL;
+
+ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS embedding VECTOR(1536);
+ALTER TABLE query_events ADD COLUMN IF NOT EXISTS failure_reason TEXT;

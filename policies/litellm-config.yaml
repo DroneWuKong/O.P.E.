@@ -3,8 +3,20 @@ model_list:
     litellm_params:
       model: openai/gpt-5.5
       api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-mini
+    litellm_params:
+      model: openai/gpt-5.5-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-coding
+    litellm_params:
+      model: openai/gpt-5.5-codex
+      api_key: os.environ/OPENAI_API_KEY
 
   - model_name: claude-main
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: claude-coding
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_API_KEY
@@ -13,10 +25,18 @@ model_list:
     litellm_params:
       model: gemini/gemini-2.5-pro
       api_key: os.environ/GEMINI_API_KEY
+  - model_name: gemini-fast
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
 
   - model_name: mistral-large
     litellm_params:
       model: mistral/mistral-large-latest
+      api_key: os.environ/MISTRAL_API_KEY
+  - model_name: mistral-fast
+    litellm_params:
+      model: mistral/mistral-small-latest
       api_key: os.environ/MISTRAL_API_KEY
 
 router_settings:
@@ -25,6 +45,18 @@ router_settings:
         - claude-main
         - gemini-main
         - mistral-large
+    - openai-mini:
+        - gemini-fast
+        - mistral-fast
+    - openai-coding:
+        - claude-coding
+        - gemini-main
+    - claude-coding:
+        - openai-coding
+        - gemini-main
+    - mistral-fast:
+        - gemini-fast
+        - openai-mini
 
 litellm_settings:
   num_retries: 1
