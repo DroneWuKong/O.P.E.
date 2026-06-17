@@ -1,0 +1,54 @@
+routes:
+  quick_lookup:
+    planner_model: mistral-fast
+    primary_model: mistral-fast
+    fallbacks:
+      - gemini-fast
+      - openai-mini
+    search_enabled: false
+    verify: false
+
+  technical_search:
+    planner_model: mistral-fast
+    primary_model: openai-main
+    fallbacks:
+      - claude-main
+      - gemini-main
+      - mistral-large
+    search_enabled: true
+    sources:
+      - official_docs
+      - github
+      - web
+    require_citations: true
+    verify: true
+
+  codebase_work:
+    planner_model: mistral-fast
+    primary_model: claude-coding
+    fallbacks:
+      - openai-coding
+      - gemini-main
+      - mistral-large
+    sources:
+      - repo_index
+      - project_memory
+      - github
+    verify: true
+
+  deep_reasoning:
+    planner_model: openai-mini
+    primary_model: openai-main
+    fallbacks:
+      - claude-main
+      - gemini-main
+    verify: true
+
+  private_memory:
+    planner_model: mistral-fast
+    primary_model: openai-main
+    fallbacks:
+      - claude-main
+      - gemini-main
+    web_allowed: false
+    verify: false
