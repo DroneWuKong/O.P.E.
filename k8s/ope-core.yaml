@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ope-core
+  namespace: ope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ope-core
+  template:
+    metadata:
+      labels:
+        app: ope-core
+    spec:
+      containers:
+        - name: ope-core
+          image: ghcr.io/dronewukong/ope-core:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OPE_ENV
+              value: octoputer
+            - name: OPE_SERVICE_NAME
+              value: ope-core
+            - name: OPE_DEFAULT_PROJECT
+              value: ope-core
+            - name: LITELLM_BASE_URL
+              value: http://litellm.ope.svc.cluster.local:4000
+            - name: REDIS_URL
+              value: redis://redis.ope.svc.cluster.local:6379/0
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ope-core
+  namespace: ope
+spec:
+  selector:
+    app: ope-core
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
