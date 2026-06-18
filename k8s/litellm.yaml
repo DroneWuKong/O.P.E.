@@ -70,6 +70,9 @@ spec:
       labels:
         app: litellm
     spec:
+      # Provider DNS currently resolves reliably from the control-plane node only.
+      nodeSelector:
+        kubernetes.io/hostname: russell-ideapad-flex-5-14iau7
       containers:
         - name: litellm
           image: ghcr.io/berriai/litellm:main-latest
