@@ -31,8 +31,24 @@ elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
 elements.saveKey.checked = Boolean(state.apiKey);
 
+function normalizedApiKey() {
+  return elements.apiKey.value.trim().replace(/^Bearer\s+/i, '');
+}
+
+function hasApiKey() {
+  return normalizedApiKey().length > 0;
+}
+
+function requireApiKey(target) {
+  if (hasApiKey()) {
+    return true;
+  }
+  renderEmpty(target, 'Enter your OPE API key to load this panel.');
+  return false;
+}
+
 function authHeaders() {
-  const key = elements.apiKey.value.trim();
+  const key = normalizedApiKey();
   const headers = { 'Content-Type': 'application/json' };
   if (key) {
     headers.Authorization = `Bearer ${key}`;
@@ -47,6 +63,9 @@ function authHeaders() {
 }
 
 async function api(path, options = {}) {
+  if (!hasApiKey()) {
+    throw new Error('Enter your OPE API key first.');
+  }
   const response = await fetch(path, {
     ...options,
     headers: {
@@ -126,6 +145,10 @@ async function checkStatus() {
 async function submitAsk(event) {
   event.preventDefault();
   const body = requestBody();
+  if (!hasApiKey()) {
+    elements.answer.textContent = 'Enter your OPE API key first.';
+    return;
+  }
   if (!body.query) {
     elements.answer.textContent = 'Give O.P.E. a prompt first.';
     return;
@@ -160,6 +183,10 @@ async function submitAsk(event) {
 
 async function previewPlan() {
   const body = requestBody();
+  if (!hasApiKey()) {
+    elements.answer.textContent = 'Enter your OPE API key first.';
+    return;
+  }
   if (!body.query) {
     elements.answer.textContent = 'Give O.P.E. a prompt first.';
     return;
@@ -184,6 +211,7 @@ async function previewPlan() {
 }
 
 async function loadRoutes() {
+  if (!requireApiKey(elements.routes)) return;
   try {
     const data = await api('/routes');
     elements.routes.innerHTML = data.routes.map((route) => `
@@ -198,6 +226,7 @@ async function loadRoutes() {
 }
 
 async function loadModels() {
+  if (!requireApiKey(elements.models)) return;
   try {
     const data = await api('/models/status');
     const provider = data.provider_health || {};
@@ -214,6 +243,7 @@ async function loadModels() {
 }
 
 async function loadEvents() {
+  if (!requireApiKey(elements.events)) return;
   try {
     const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
     const data = await api(`/events/recent?project=${project}&limit=12`);
@@ -232,6 +262,7 @@ async function loadEvents() {
 
 async function searchMemory(event) {
   event.preventDefault();
+  if (!requireApiKey(elements.memory)) return;
   const query = $('memoryQueryInput').value.trim();
   if (!query) return;
   try {
@@ -258,6 +289,7 @@ async function searchMemory(event) {
 
 async function writeMemory(event) {
   event.preventDefault();
+  if (!requireApiKey(elements.memory)) return;
   const summary = $('memorySummaryInput').value.trim();
   if (!summary) return;
   try {
@@ -284,6 +316,7 @@ async function writeMemory(event) {
 }
 
 async function loadTools() {
+  if (!requireApiKey(elements.toolsPanel)) return;
   try {
     const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
     const [stats, jobs] = await Promise.all([
@@ -321,6 +354,13 @@ function wireTabs() {
 
 async function refreshAll() {
   await checkStatus();
+  if (!hasApiKey()) {
+    renderEmpty(elements.routes, 'Enter your OPE API key to load routes.');
+    renderEmpty(elements.models, 'Enter your OPE API key to load models.');
+    renderEmpty(elements.events, 'Enter your OPE API key to load events.');
+    renderEmpty(elements.toolsPanel, 'Enter your OPE API key to load tools.');
+    return;
+  }
   await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadTools()]);
 }
 
@@ -333,6 +373,8 @@ $('eventsButton').addEventListener('click', loadEvents);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
+elements.apiKey.addEventListener('change', refreshAll);
+elements.saveKey.addEventListener('change', authHeaders);
 
 wireTabs();
 refreshAll();
