@@ -348,6 +348,33 @@ def test_ask_route(monkeypatch) -> None:
     assert body['memory_used'][0]['summary'].startswith('OPE routes')
 
 
+def test_ask_model_failure_returns_gateway_error(monkeypatch) -> None:
+    async def fake_recall(req, plan):
+        return []
+
+    async def fake_record(*args, **kwargs):
+        assert kwargs['success'] is False
+        return 'event-failed'
+
+    async def fake_update(**kwargs):
+        assert kwargs['success'] is False
+        return None
+
+    async def fake_call(primary, fallbacks, messages):
+        raise RuntimeError('All configured model routes failed')
+
+    monkeypatch.setattr(main, 'get_settings', lambda: SimpleNamespace(ope_disable_event_logging=False))
+    monkeypatch.setattr(main, 'recall_memory', fake_recall)
+    monkeypatch.setattr(main, 'record_query_event', fake_record)
+    monkeypatch.setattr(main, 'update_model_stats', fake_update)
+    monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)
+
+    response = client.post('/ask', json={'query': 'quick lookup please'})
+
+    assert response.status_code == 502
+    assert response.json()['detail']['error'] == 'model_route_failed'
+
+
 def test_ask_records_query_event_when_enabled(monkeypatch) -> None:
     async def fake_recall(req, plan):
         return [MemoryItem(id='memory-1', summary='Stored OPE memory.')]

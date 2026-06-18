@@ -65,6 +65,20 @@ jobs:
           LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
         run: |
           set -e
+          clean_secret() {
+            SECRET_NAME="$1" python3 - <<'PY'
+          import os
+
+          value = os.environ.get(os.environ['SECRET_NAME'], '')
+          print(value.replace('\ufeff', '').strip(), end='')
+          PY
+          }
+          OPENAI_API_KEY_CLEAN="$(clean_secret OPENAI_API_KEY)"
+          ANTHROPIC_API_KEY_CLEAN="$(clean_secret ANTHROPIC_API_KEY)"
+          GEMINI_API_KEY_CLEAN="$(clean_secret GEMINI_API_KEY)"
+          MISTRAL_API_KEY_CLEAN="$(clean_secret MISTRAL_API_KEY)"
+          LITELLM_MASTER_KEY_CLEAN="$(clean_secret LITELLM_MASTER_KEY)"
+          OPE_API_KEYS_CLEAN="$(clean_secret OPE_API_KEYS)"
           POSTGRES_DSN="$(POSTGRES_PASSWORD="$POSTGRES_PASSWORD" NS="$NS" python3 - <<'PY'
           import os
           from urllib.parse import quote
@@ -80,14 +94,14 @@ jobs:
             --from-literal=postgres-dsn="$POSTGRES_DSN" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           $KUBECTL -n "$NS" create secret generic ope-provider-env \
-            --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" \
-            --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-            --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
-            --from-literal=MISTRAL_API_KEY="$MISTRAL_API_KEY" \
-            --from-literal=LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}" \
+            --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY_CLEAN" \
+            --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY_CLEAN" \
+            --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY_CLEAN" \
+            --from-literal=MISTRAL_API_KEY="$MISTRAL_API_KEY_CLEAN" \
+            --from-literal=LITELLM_MASTER_KEY="$LITELLM_MASTER_KEY_CLEAN" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           $KUBECTL -n "$NS" create secret generic ope-api \
-            --from-literal=api-keys="$OPE_API_KEYS" \
+            --from-literal=api-keys="$OPE_API_KEYS_CLEAN" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
 
       - name: Apply data services

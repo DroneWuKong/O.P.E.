@@ -220,7 +220,14 @@ async def ask(req: AskRequest) -> AskResponse:
                 latency_ms=latency_ms,
                 failure_reason=str(exc)[:500],
             )
-        raise
+        raise HTTPException(
+            status_code=502,
+            detail={
+                'error': 'model_route_failed',
+                'message': str(exc),
+                'route_plan': plan.model_dump(),
+            },
+        ) from exc
 
     saved = await maybe_write_memory(req, plan, answer)
     latency_ms = int((time.perf_counter() - started) * 1000)
