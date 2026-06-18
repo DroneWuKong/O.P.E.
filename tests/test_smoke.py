@@ -20,7 +20,15 @@ def test_root_index() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body['service'] == 'ope-core'
+    assert body['endpoints']['ui'] == '/ui/'
     assert body['endpoints']['ask'] == '/ask'
+
+
+def test_ui_index() -> None:
+    response = client.get('/ui/')
+
+    assert response.status_code == 200
+    assert 'O.P.E. Control' in response.text
 
 
 def test_health() -> None:

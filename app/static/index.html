@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>O.P.E. Control</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Optimized Processing Engine</p>
+          <h1>O.P.E. Control</h1>
+        </div>
+        <div class="status-row" aria-live="polite">
+          <span class="status-pill" id="healthStatus">Health: checking</span>
+          <span class="status-pill" id="readyStatus">Ready: checking</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="command-surface" aria-labelledby="askTitle">
+          <div class="toolbar">
+            <div>
+              <h2 id="askTitle">Ask</h2>
+              <p>Route a request through O.P.E. and see the decision trail.</p>
+            </div>
+            <button class="icon-button" id="refreshButton" type="button" title="Refresh status and side panels" aria-label="Refresh">
+              <span aria-hidden="true">R</span>
+            </button>
+          </div>
+
+          <form id="askForm" class="ask-form">
+            <label class="field wide">
+              <span>Prompt</span>
+              <textarea id="queryInput" rows="7" placeholder="Ask O.P.E. what it can do right now..."></textarea>
+            </label>
+
+            <div class="form-grid">
+              <label class="field">
+                <span>API key</span>
+                <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Bearer key" />
+              </label>
+              <label class="field">
+                <span>Project</span>
+                <input id="projectInput" type="text" value="ope-core" />
+              </label>
+              <label class="field">
+                <span>Budget</span>
+                <select id="budgetInput">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Latency</span>
+                <select id="latencyInput">
+                  <option value="fast">Fast</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <label><input id="saveKeyInput" type="checkbox" /> Save key locally</label>
+              <label><input id="searchInput" type="checkbox" checked /> Search allowed</label>
+              <label><input id="toolsInput" type="checkbox" /> Tools allowed</label>
+              <label><input id="approvalInput" type="checkbox" /> Tool approval token</label>
+            </div>
+
+            <div class="action-row">
+              <button class="primary-button" id="askButton" type="submit">Send</button>
+              <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
+              <span id="requestState" class="request-state">Idle</span>
+            </div>
+          </form>
+
+          <section class="answer-panel" aria-live="polite">
+            <div class="answer-head">
+              <h2>Answer</h2>
+              <div class="metrics" id="answerMetrics"></div>
+            </div>
+            <pre id="answerOutput">Ask something to start.</pre>
+          </section>
+        </section>
+
+        <aside class="side-rail">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Route</h2>
+              <button class="mini-button" id="routesButton" type="button">Load</button>
+            </div>
+            <div id="routePanel" class="route-stack"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Models</h2>
+              <button class="mini-button" id="modelsButton" type="button">Load</button>
+            </div>
+            <div id="modelsPanel" class="status-list"></div>
+          </section>
+        </aside>
+      </main>
+
+      <section class="tabs" aria-label="OPE data panels">
+        <div class="tab-buttons" role="tablist">
+          <button class="tab-button active" type="button" data-tab="events">Events</button>
+          <button class="tab-button" type="button" data-tab="memory">Memory</button>
+          <button class="tab-button" type="button" data-tab="tools">Tools</button>
+        </div>
+
+        <div class="tab-panel active" id="eventsTab">
+          <div class="panel-head">
+            <h2>Recent Events</h2>
+            <button class="mini-button" id="eventsButton" type="button">Refresh</button>
+          </div>
+          <div id="eventsPanel" class="data-table"></div>
+        </div>
+
+        <div class="tab-panel" id="memoryTab">
+          <div class="split-panel">
+            <form id="memorySearchForm" class="panel-form">
+              <h2>Search Memory</h2>
+              <label class="field">
+                <span>Query</span>
+                <input id="memoryQueryInput" type="text" placeholder="Octoputer, route, deployment..." />
+              </label>
+              <button class="secondary-button" type="submit">Search</button>
+            </form>
+            <form id="memoryWriteForm" class="panel-form">
+              <h2>Write Memory</h2>
+              <label class="field">
+                <span>Summary</span>
+                <input id="memorySummaryInput" type="text" placeholder="Remember that..." />
+              </label>
+              <button class="secondary-button" type="submit">Write</button>
+            </form>
+          </div>
+          <div id="memoryPanel" class="data-table"></div>
+        </div>
+
+        <div class="tab-panel" id="toolsTab">
+          <div class="panel-head">
+            <h2>Tool Queue</h2>
+            <button class="mini-button" id="toolsButton" type="button">Refresh</button>
+          </div>
+          <div id="toolsPanel" class="data-table"></div>
+        </div>
+      </section>
+    </div>
+
+    <template id="emptyTemplate">
+      <p class="empty">Nothing here yet.</p>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

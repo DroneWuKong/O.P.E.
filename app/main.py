@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+from pathlib import Path
 import time
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.models import (
@@ -94,6 +96,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title='OPE Core', version='0.1.0', lifespan=lifespan)
 
+STATIC_DIR = Path(__file__).resolve().parent / 'static'
+if STATIC_DIR.exists():
+    app.mount('/ui', StaticFiles(directory=STATIC_DIR, html=True), name='ui')
+
 
 @app.get('/')
 def root() -> dict:
@@ -104,6 +110,7 @@ def root() -> dict:
         'message': 'OPE Core is running. Use /health, /ready, /routes, /plan, or /ask.',
         'auth': 'Protected API routes require Authorization: Bearer <ope-api-key>.',
         'endpoints': {
+            'ui': '/ui/',
             'health': '/health',
             'ready': '/ready',
             'routes': '/routes',
