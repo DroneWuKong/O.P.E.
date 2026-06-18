@@ -9,7 +9,7 @@ on:
     inputs:
       image:
         description: ope-core image to deploy
-        default: ghcr.io/dronewukong/ope-core:latest
+        default: ""
         required: false
 
 concurrency:
@@ -22,7 +22,7 @@ jobs:
     env:
       NS: ope
       KUBECONFIG: ${{ vars.KUBECONFIG || '/etc/rancher/k3s/k3s.yaml' }}
-      OPE_IMAGE: ${{ github.event.inputs.image || 'ghcr.io/dronewukong/ope-core:latest' }}
+      OPE_IMAGE: ${{ github.event.inputs.image || format('ghcr.io/dronewukong/ope-core:sha-{0}', github.sha) }}
       OPE_PUBLIC_HOST: ${{ vars.OPE_PUBLIC_HOST || 'ope.100.81.235.34.sslip.io' }}
       OPE_PUBLIC_LB_IP: ${{ vars.OPE_PUBLIC_LB_IP || '100.81.235.34' }}
     steps:
