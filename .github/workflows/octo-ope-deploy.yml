@@ -63,10 +63,19 @@ jobs:
           LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
         run: |
           set -e
+          POSTGRES_DSN="$(POSTGRES_PASSWORD="$POSTGRES_PASSWORD" NS="$NS" python3 - <<'PY'
+          import os
+          from urllib.parse import quote
+
+          password = quote(os.environ['POSTGRES_PASSWORD'], safe='')
+          namespace = os.environ['NS']
+          print(f'postgresql://ope:{password}@postgres.{namespace}.svc.cluster.local:5432/ope')
+          PY
+          )"
           $KUBECTL apply -f k8s/namespace.yaml
           $KUBECTL -n "$NS" create secret generic ope-db \
             --from-literal=postgres-password="$POSTGRES_PASSWORD" \
-            --from-literal=postgres-dsn="postgresql://ope:${POSTGRES_PASSWORD}@postgres.${NS}.svc.cluster.local:5432/ope" \
+            --from-literal=postgres-dsn="$POSTGRES_DSN" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           $KUBECTL -n "$NS" create secret generic ope-provider-env \
             --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY" \
