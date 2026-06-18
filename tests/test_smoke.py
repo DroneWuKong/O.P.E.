@@ -1,3 +1,4 @@
+import asyncio
 import os
 from types import SimpleNamespace
 
@@ -363,7 +364,11 @@ def test_ask_model_failure_returns_gateway_error(monkeypatch) -> None:
     async def fake_call(primary, fallbacks, messages):
         raise RuntimeError('All configured model routes failed')
 
-    monkeypatch.setattr(main, 'get_settings', lambda: SimpleNamespace(ope_disable_event_logging=False))
+    monkeypatch.setattr(
+        main,
+        'get_settings',
+        lambda: SimpleNamespace(ope_disable_event_logging=False, request_timeout_seconds=120),
+    )
     monkeypatch.setattr(main, 'recall_memory', fake_recall)
     monkeypatch.setattr(main, 'record_query_event', fake_record)
     monkeypatch.setattr(main, 'update_model_stats', fake_update)
@@ -373,6 +378,28 @@ def test_ask_model_failure_returns_gateway_error(monkeypatch) -> None:
 
     assert response.status_code == 502
     assert response.json()['detail']['error'] == 'model_route_failed'
+
+
+def test_ask_model_timeout_returns_gateway_error(monkeypatch) -> None:
+    async def fake_recall(req, plan):
+        return []
+
+    async def fake_call(primary, fallbacks, messages):
+        await asyncio.sleep(1)
+        return 'late answer', primary, []
+
+    monkeypatch.setattr(
+        main,
+        'get_settings',
+        lambda: SimpleNamespace(ope_disable_event_logging=True, request_timeout_seconds=0.01),
+    )
+    monkeypatch.setattr(main, 'recall_memory', fake_recall)
+    monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)
+
+    response = client.post('/ask', json={'query': 'quick lookup please'})
+
+    assert response.status_code == 502
+    assert response.json()['detail']['message'] == 'model route timed out after 0.01s'
 
 
 def test_ask_records_query_event_when_enabled(monkeypatch) -> None:
@@ -396,7 +423,11 @@ def test_ask_records_query_event_when_enabled(monkeypatch) -> None:
         assert kwargs['model_alias'] == 'mistral-fast'
         assert kwargs['success'] is True
 
-    monkeypatch.setattr(main, 'get_settings', lambda: SimpleNamespace(ope_disable_event_logging=False))
+    monkeypatch.setattr(
+        main,
+        'get_settings',
+        lambda: SimpleNamespace(ope_disable_event_logging=False, request_timeout_seconds=120),
+    )
     monkeypatch.setattr(main, 'recall_memory', fake_recall)
     monkeypatch.setattr(main, 'maybe_write_memory', fake_write)
     monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)
@@ -432,7 +463,11 @@ def test_approved_tool_action_ask_creates_tool_job(monkeypatch) -> None:
         assert req.payload['query'] == 'please deploy this'
         return ToolJob(id='job-2', project=req.project, tool_name=req.tool_name, action=req.action)
 
-    monkeypatch.setattr(main, 'get_settings', lambda: SimpleNamespace(ope_disable_event_logging=False))
+    monkeypatch.setattr(
+        main,
+        'get_settings',
+        lambda: SimpleNamespace(ope_disable_event_logging=False, request_timeout_seconds=120),
+    )
     monkeypatch.setattr(main, 'recall_memory', fake_recall)
     monkeypatch.setattr(main, 'maybe_write_memory', fake_write)
     monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)

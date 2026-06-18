@@ -194,14 +194,19 @@ async def ask(req: AskRequest) -> AskResponse:
         + req.query
     )
 
+    route_timeout_seconds = getattr(settings, 'request_timeout_seconds', 120)
     try:
-        answer, model_used, fallbacks_attempted = await call_with_fallbacks(
-            plan.primary_model,
-            plan.fallback_models,
-            [{'role': 'user', 'content': prompt}],
+        answer, model_used, fallbacks_attempted = await asyncio.wait_for(
+            call_with_fallbacks(
+                plan.primary_model,
+                plan.fallback_models,
+                [{'role': 'user', 'content': prompt}],
+            ),
+            timeout=route_timeout_seconds,
         )
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started) * 1000)
+        failure_message = str(exc) or f'model route timed out after {route_timeout_seconds}s'
         if not settings.ope_disable_event_logging:
             await record_query_event(
                 req,
@@ -211,20 +216,20 @@ async def ask(req: AskRequest) -> AskResponse:
                 sources_used=[m.id for m in memories if m.id],
                 success=False,
                 latency_ms=latency_ms,
-                failure_reason=str(exc)[:500],
+                failure_reason=failure_message[:500],
             )
             await update_model_stats(
                 model_alias=plan.primary_model,
                 task_type=plan.query_type,
                 success=False,
                 latency_ms=latency_ms,
-                failure_reason=str(exc)[:500],
+                failure_reason=failure_message[:500],
             )
         raise HTTPException(
             status_code=502,
             detail={
                 'error': 'model_route_failed',
-                'message': str(exc),
+                'message': failure_message,
                 'route_plan': plan.model_dump(),
             },
         ) from exc
