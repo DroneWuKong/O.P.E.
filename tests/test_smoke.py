@@ -28,7 +28,7 @@ def test_ui_index() -> None:
     response = client.get('/ui/')
 
     assert response.status_code == 200
-    assert 'O.P.E. Control' in response.text
+    assert 'O.P.E. Chat' in response.text
 
 
 def test_health() -> None:
