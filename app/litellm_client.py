@@ -3,6 +3,13 @@ from app.config import get_settings
 from app.provider_health import provider_health
 
 
+def _clean_header_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.replace('\ufeff', '').strip()
+    return cleaned or None
+
+
 async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list[dict[str, str]]) -> tuple[str, str, list[str]]:
     settings = get_settings()
     attempted: list[str] = []
@@ -16,8 +23,9 @@ async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list
         attempted.append(model)
         try:
             headers = {'Content-Type': 'application/json'}
-            if settings.litellm_api_key:
-                headers['Authorization'] = f'Bearer {settings.litellm_api_key}'
+            litellm_api_key = _clean_header_value(settings.litellm_api_key)
+            if litellm_api_key:
+                headers['Authorization'] = f'Bearer {litellm_api_key}'
 
             async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
                 resp = await client.post(

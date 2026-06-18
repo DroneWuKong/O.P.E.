@@ -133,7 +133,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
         run: |
           set -e
-          $KUBECTL -n "$NS" exec deploy/postgres -- env PGPASSWORD="$POSTGRES_PASSWORD" \
+          $KUBECTL -n "$NS" exec -i deploy/postgres -- env PGPASSWORD="$POSTGRES_PASSWORD" \
             psql -U ope -d ope -f - < migrations/001_initial_schema.sql
 
       - name: Apply LiteLLM and OPE Core
