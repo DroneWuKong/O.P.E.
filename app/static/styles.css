@@ -1,21 +1,18 @@
 :root {
   color-scheme: dark;
-  --ground: #050a08;
-  --canopy: #0a1511;
-  --surface: rgba(10, 18, 15, 0.9);
-  --surface-strong: rgba(17, 27, 23, 0.96);
-  --field: rgba(3, 8, 7, 0.78);
-  --ink: #efe6d1;
-  --muted: #aeb4a6;
-  --line: rgba(166, 180, 158, 0.18);
-  --moss: #6fa36f;
-  --moss-ink: #d6e7c9;
-  --ember: #d08a4b;
-  --clay: #a95f42;
-  --water: #79aeb3;
-  --granite: #879089;
-  --blueberry: #8a8fcb;
-  --shadow: 0 18px 44px rgba(0, 0, 0, 0.52);
+  --ground: #030504;
+  --surface: rgba(10, 13, 11, 0.94);
+  --surface-strong: rgba(18, 22, 19, 0.98);
+  --field: rgba(2, 5, 4, 0.86);
+  --ink: #f0f4eb;
+  --muted: #8d968a;
+  --line: rgba(121, 132, 118, 0.22);
+  --signal: #24d36b;
+  --signal-soft: rgba(36, 211, 107, 0.14);
+  --signal-line: rgba(36, 211, 107, 0.42);
+  --ember: #d7944d;
+  --clay: #b46143;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.58);
 }
 
 * {
@@ -27,8 +24,8 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    linear-gradient(180deg, rgba(4, 10, 12, 0.92) 0%, rgba(6, 16, 13, 0.96) 52%, rgba(4, 8, 7, 1) 100%),
-    url("./maine-ridge.svg") center top / cover no-repeat fixed,
+    radial-gradient(900px 480px at 12% 0%, rgba(36, 211, 107, 0.08), transparent 64%),
+    linear-gradient(180deg, rgba(3, 5, 4, 0.94), rgba(3, 5, 4, 1)),
     var(--ground);
   font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
 }
@@ -39,13 +36,12 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(5, 10, 8, 0.08), rgba(5, 10, 8, 0.66) 46%, rgba(5, 10, 8, 0.92)),
-    repeating-linear-gradient(90deg, rgba(239, 230, 209, 0.025) 0 1px, transparent 1px 150px),
-    repeating-linear-gradient(0deg, rgba(239, 230, 209, 0.018) 0 1px, transparent 1px 96px);
+    linear-gradient(180deg, transparent, rgba(3, 5, 4, 0.9)),
+    repeating-linear-gradient(90deg, rgba(240, 244, 235, 0.022) 0 1px, transparent 1px 128px);
 }
 
 body::after {
-  content: "";
+  content: none;
   position: fixed;
   inset: auto 0 0;
   height: 32vh;
@@ -69,9 +65,9 @@ button {
 
 .shell {
   position: relative;
-  width: min(1320px, calc(100% - 32px));
+  width: min(1200px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 16px 0 36px;
+  padding: 10px 0 34px;
   z-index: 1;
 }
 
@@ -79,8 +75,29 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 0 0 12px;
+  gap: 10px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 0 10px;
+}
+
+.nav-button {
+  align-items: center;
+  display: inline-grid;
+  gap: 4px;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(9, 12, 10, 0.82);
+}
+
+.nav-button span {
+  width: 18px;
+  height: 2px;
+  border-radius: 4px;
+  background: #7b8378;
 }
 
 .identity {
@@ -88,11 +105,12 @@ button {
   display: flex;
   gap: 10px;
   min-width: 0;
+  margin-right: auto;
 }
 
 .identity span {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 800;
 }
 
@@ -104,7 +122,8 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  color: var(--signal);
+  font-family: "Cascadia Code", "Consolas", monospace;
   font-size: 1.28rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -113,8 +132,29 @@ h1 {
 
 h2 {
   margin-bottom: 4px;
-  font-size: 1rem;
+  font-size: 1.18rem;
+  font-weight: 900;
   letter-spacing: 0;
+}
+
+.section-label {
+  align-items: center;
+  color: #7d847a;
+  display: flex;
+  gap: 10px;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
 }
 
 .workspace {
@@ -130,13 +170,13 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(145deg, rgba(16, 26, 22, 0.94), rgba(7, 13, 11, 0.94)),
+    linear-gradient(145deg, rgba(16, 20, 17, 0.94), rgba(5, 7, 6, 0.96)),
     var(--surface);
   box-shadow: var(--shadow);
 }
 
 .command-surface {
-  padding: 16px;
+  padding: 14px;
 }
 
 .toolbar,
@@ -151,8 +191,8 @@ h2 {
   gap: 12px;
 }
 
-.toolbar p {
-  display: none;
+.toolbar {
+  margin-bottom: 10px;
 }
 
 .ask-form {
@@ -187,7 +227,7 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(8, 15, 13, 0.86), rgba(3, 8, 7, 0.9)),
+    linear-gradient(180deg, rgba(8, 10, 9, 0.9), rgba(2, 5, 4, 0.94)),
     var(--field);
   color: var(--ink);
   outline: none;
@@ -201,9 +241,9 @@ h2 {
 }
 
 .composer-field textarea {
-  border-color: rgba(166, 180, 158, 0.28);
+  border-color: var(--signal-line);
   background:
-    linear-gradient(145deg, rgba(14, 25, 21, 0.95), rgba(5, 11, 9, 0.96)),
+    linear-gradient(145deg, rgba(8, 14, 10, 0.95), rgba(2, 5, 4, 0.98)),
     var(--field);
   font-size: 1.02rem;
 }
@@ -216,8 +256,8 @@ h2 {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  border-color: rgba(121, 174, 179, 0.72);
-  box-shadow: 0 0 0 3px rgba(121, 174, 179, 0.14);
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px rgba(36, 211, 107, 0.12);
 }
 
 .toggle-row {
@@ -246,16 +286,16 @@ h2 {
 
 .primary-button {
   min-width: 116px;
-  background: linear-gradient(135deg, #c77b42, #d8a15b);
-  color: #100b06;
-  box-shadow: 0 8px 22px rgba(208, 138, 75, 0.18);
+  background: var(--signal);
+  color: #031007;
+  box-shadow: 0 8px 22px rgba(36, 211, 107, 0.18);
 }
 
 .secondary-button,
 .mini-button,
 .icon-button {
-  background: rgba(135, 144, 137, 0.1);
-  border-color: rgba(166, 180, 158, 0.24);
+  background: rgba(11, 15, 12, 0.9);
+  border-color: var(--line);
   color: var(--ink);
 }
 
@@ -272,7 +312,7 @@ h2 {
 .option-drawer {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(5, 11, 9, 0.52);
+  background: rgba(6, 9, 7, 0.74);
   padding: 0;
 }
 
@@ -297,14 +337,14 @@ h2 {
 
 .option-drawer summary::after,
 .rail-drawer summary::after {
-  content: "open";
-  color: #cba06b;
+  content: "+";
+  color: var(--signal);
   font-size: 0.82rem;
 }
 
 .option-drawer[open] summary::after,
 .rail-drawer[open] summary::after {
-  content: "close";
+  content: "-";
 }
 
 .option-drawer .form-grid,
@@ -328,9 +368,9 @@ h2 {
 
 .text-button {
   min-height: 32px;
-  border: 1px solid rgba(166, 180, 158, 0.24);
-  border-radius: 999px;
-  background: rgba(135, 144, 137, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(11, 15, 12, 0.9);
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 900;
@@ -339,17 +379,19 @@ h2 {
 .request-state,
 .status-pill {
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(4, 9, 7, 0.74);
+  border-radius: 8px;
+  background: rgba(6, 9, 7, 0.9);
   color: var(--muted);
-  padding: 8px 11px;
-  font-size: 0.82rem;
+  padding: 7px 9px;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.72rem;
   font-weight: 900;
+  text-transform: uppercase;
 }
 
 .status-pill.ok {
-  border-color: rgba(111, 163, 111, 0.38);
-  color: var(--moss-ink);
+  border-color: var(--signal-line);
+  color: var(--signal);
 }
 
 .status-pill.bad {
@@ -371,7 +413,7 @@ h2 {
 
 .metric {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 6px 9px;
   color: #c2c9ba;
   font-size: 0.78rem;
@@ -379,18 +421,20 @@ h2 {
 }
 
 .cost-ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   justify-content: stretch;
   margin-top: 12px;
 }
 
 .cost-ledger div {
-  flex: 1 1 220px;
-  border: 1px solid rgba(121, 174, 179, 0.24);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
   background:
-    linear-gradient(135deg, rgba(121, 174, 179, 0.12), rgba(138, 143, 203, 0.06)),
-    rgba(5, 11, 9, 0.64);
-  padding: 13px;
+    linear-gradient(180deg, rgba(36, 211, 107, 0.08), rgba(3, 5, 4, 0.72)),
+    rgba(5, 8, 6, 0.9);
+  padding: 12px;
+  text-align: center;
 }
 
 .cost-reset {
@@ -410,8 +454,9 @@ h2 {
 .cost-ledger strong {
   display: block;
   margin: 6px 0 4px;
-  color: #d7dfcf;
-  font-size: 1.45rem;
+  color: var(--signal);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 1.55rem;
   letter-spacing: 0;
 }
 
@@ -420,10 +465,10 @@ pre {
   min-height: 360px;
   max-height: 520px;
   margin: 12px 0 0;
-  border: 1px solid rgba(166, 180, 158, 0.18);
+  border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(145deg, rgba(9, 17, 14, 0.94), rgba(3, 7, 6, 0.96)),
+    linear-gradient(145deg, rgba(8, 12, 9, 0.96), rgba(2, 4, 3, 0.98)),
     rgba(3, 6, 5, 0.88);
   color: #f6eedf;
   padding: 18px;
@@ -476,7 +521,7 @@ pre {
 .row-item {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(5, 11, 9, 0.54);
+  background: rgba(6, 9, 7, 0.74);
   padding: 12px;
 }
 
@@ -517,6 +562,7 @@ pre {
   display: block;
   margin-bottom: 6px;
   color: var(--ink);
+  font-weight: 900;
 }
 
 .route-item span,
@@ -539,8 +585,8 @@ pre {
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: var(--moss);
-  box-shadow: 0 0 16px rgba(111, 163, 111, 0.36);
+  background: var(--signal);
+  box-shadow: 0 0 16px rgba(36, 211, 107, 0.34);
 }
 
 .status-item.watch::before {
@@ -567,16 +613,16 @@ pre {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(9, 17, 14, 0.78);
+  background: rgba(6, 9, 7, 0.88);
   color: var(--muted);
   padding: 0 16px;
   font-weight: 900;
 }
 
 .tab-button.active {
-  border-color: rgba(121, 174, 179, 0.36);
-  background: rgba(121, 174, 179, 0.14);
-  color: var(--moss-ink);
+  border-color: var(--signal-line);
+  background: var(--signal-soft);
+  color: var(--signal);
 }
 
 .tab-panel {
@@ -601,7 +647,7 @@ pre {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
-  background: rgba(5, 11, 9, 0.48);
+  background: rgba(6, 9, 7, 0.7);
 }
 
 .empty {
@@ -633,8 +679,12 @@ pre {
 
 @media (max-width: 620px) {
   .shell {
-    width: min(100% - 20px, 1440px);
-    padding-top: 10px;
+    width: min(100% - 24px, 1440px);
+    padding-top: 8px;
+  }
+
+  .status-row {
+    display: none;
   }
 
   .command-surface,
@@ -649,6 +699,20 @@ pre {
   .action-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .toolbar {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .cost-ledger {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .cost-reset {
+    grid-column: 1 / -1;
+    min-height: 34px;
   }
 
   .primary-button,
