@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import asyncio
+import logging
 import time
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -51,12 +53,38 @@ from app.tools import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+async def connect_external_services() -> None:
+    settings = get_settings()
+    deadline = time.monotonic() + settings.ope_startup_retry_seconds
+    attempt = 0
+
+    while True:
+        attempt += 1
+        try:
+            await init_memory_store()
+            await provider_health.connect()
+            return
+        except Exception as exc:
+            await provider_health.close()
+            await close_memory_store()
+            if time.monotonic() >= deadline:
+                raise
+            logger.warning(
+                'external service startup attempt %s failed: %s',
+                attempt,
+                exc,
+            )
+            await asyncio.sleep(settings.ope_startup_retry_interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     if not settings.ope_skip_external_init:
-        await init_memory_store()
-        await provider_health.connect()
+        await connect_external_services()
     yield
     if not settings.ope_skip_external_init:
         await provider_health.close()

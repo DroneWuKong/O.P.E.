@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     ope_require_api_key: bool = False
     ope_api_keys: str = ''
     ope_run_migrations_on_startup: bool = True
+    ope_startup_retry_seconds: int = 120
+    ope_startup_retry_interval_seconds: float = 5.0
 
     litellm_base_url: str = 'http://litellm:4000'
     litellm_model: str = 'deep_reasoning'

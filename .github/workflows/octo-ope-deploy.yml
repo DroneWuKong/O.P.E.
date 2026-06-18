@@ -114,8 +114,8 @@ jobs:
           $KUBECTL -n "$NS" set image deploy/ope-tool-runner ope-tool-runner="$OPE_IMAGE"
           $KUBECTL -n "$NS" rollout restart deploy/litellm
           $KUBECTL -n "$NS" rollout restart deploy/ope-core
-          $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=180s
-          $KUBECTL -n "$NS" rollout status deploy/ope-core --timeout=180s
+          $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=300s
+          $KUBECTL -n "$NS" rollout status deploy/ope-core --timeout=300s
 
       - name: Smoke endpoints from inside cluster
         run: |
