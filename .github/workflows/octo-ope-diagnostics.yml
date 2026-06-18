@@ -1,0 +1,44 @@
+name: Octo - OPE Diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostics:
+    runs-on: ${{ fromJSON(vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]') }}
+    env:
+      NS: ope
+      KUBECONFIG: ${{ vars.KUBECONFIG || '/etc/rancher/k3s/k3s.yaml' }}
+    steps:
+      - name: Resolve kubectl
+        run: |
+          set -e
+          if command -v kubectl >/dev/null; then KUBECTL=kubectl
+          elif command -v k3s >/dev/null; then KUBECTL="k3s kubectl"
+          else echo "::error::No kubectl/k3s on this runner."; exit 1
+          fi
+          echo "KUBECTL=$KUBECTL" >> "$GITHUB_ENV"
+          $KUBECTL version --output=yaml >/dev/null
+
+      - name: Cluster snapshot
+        run: |
+          set +e
+          $KUBECTL get nodes -o wide
+          $KUBECTL -n "$NS" get all -o wide
+          $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
+
+      - name: Describe OPE workloads
+        run: |
+          set +e
+          $KUBECTL -n "$NS" describe deploy/litellm
+          $KUBECTL -n "$NS" describe deploy/ope-core
+          $KUBECTL -n "$NS" describe pods -l app=ope-core
+          $KUBECTL -n "$NS" describe pods -l app=litellm
+
+      - name: Recent logs
+        run: |
+          set +e
+          $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
+          $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
+          $KUBECTL -n "$NS" logs deploy/postgres --all-containers=true --tail=80
+          $KUBECTL -n "$NS" logs deploy/redis --all-containers=true --tail=80
