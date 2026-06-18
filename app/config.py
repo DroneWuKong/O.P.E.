@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     ope_disable_event_logging: bool = False
     ope_require_api_key: bool = False
     ope_api_keys: str = ''
+    ope_run_migrations_on_startup: bool = True
 
     litellm_base_url: str = 'http://litellm:4000'
     litellm_model: str = 'deep_reasoning'

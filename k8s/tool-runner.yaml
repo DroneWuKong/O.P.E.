@@ -21,6 +21,8 @@ spec:
           env:
             - name: OPE_ENV
               value: octoputer
+            - name: OPE_RUN_MIGRATIONS_ON_STARTUP
+              value: "false"
             - name: TOOL_RUNNER_WORKER_ID
               valueFrom:
                 fieldRef:

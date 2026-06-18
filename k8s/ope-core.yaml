@@ -24,6 +24,8 @@ spec:
               value: ope-core
             - name: OPE_DEFAULT_PROJECT
               value: ope-core
+            - name: OPE_RUN_MIGRATIONS_ON_STARTUP
+              value: "false"
             - name: OPE_REQUIRE_API_KEY
               value: "true"
             - name: OPE_API_KEYS
@@ -48,6 +50,12 @@ spec:
               value: redis://redis.ope.svc.cluster.local:6379/0
           ports:
             - containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /ready
