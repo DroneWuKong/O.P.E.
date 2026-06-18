@@ -120,6 +120,10 @@ auditable queue records only; O.P.E. does not execute commands yet. Future
 workers can atomically claim approved jobs with a lease and refresh that lease
 with heartbeat calls.
 
+The included `app.tool_runner` process is intentionally narrow: it only executes
+`noop` jobs, marks all other tools failed, and ships as a zero-replica Kubernetes
+deployment until an operator explicitly scales it.
+
 ## Smoke tests
 
 ```bash

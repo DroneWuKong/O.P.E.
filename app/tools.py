@@ -179,3 +179,39 @@ async def heartbeat_tool_job(job_id: str, req: ToolJobHeartbeatRequest) -> ToolJ
             req.lease_seconds,
         )
     return _row_to_tool_job(row) if row else None
+
+
+async def finish_claimed_tool_job(
+    job_id: str,
+    *,
+    worker_id: str,
+    status: str,
+    result: dict | None = None,
+    error: str | None = None,
+) -> ToolJob | None:
+    pool = get_memory_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE tool_jobs
+            SET
+              status = $3,
+              result = $4::jsonb,
+              error = $5,
+              worker_id = NULL,
+              lease_expires_at = NULL,
+              updated_at = now()
+            WHERE id = $1::uuid
+              AND status = 'running'
+              AND worker_id = $2
+            RETURNING id, project_id, query_event_id, route, tool_name, action,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
+              created_at, updated_at
+            """,
+            job_id,
+            worker_id,
+            status,
+            json.dumps(result) if result is not None else None,
+            error,
+        )
+    return _row_to_tool_job(row) if row else None

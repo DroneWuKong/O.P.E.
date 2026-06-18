@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     request_timeout_seconds: int = 120
     provider_cooldown_seconds: int = 60
 
+    tool_runner_worker_id: str = 'ope-tool-runner'
+    tool_runner_project: str | None = None
+    tool_runner_poll_seconds: float = 5.0
+    tool_runner_lease_seconds: int = 300
+    tool_runner_once: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

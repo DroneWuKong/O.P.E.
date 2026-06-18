@@ -94,7 +94,9 @@ jobs:
           set -e
           $KUBECTL apply -f k8s/litellm.yaml
           $KUBECTL apply -f k8s/ope-core.yaml
+          $KUBECTL apply -f k8s/tool-runner.yaml
           $KUBECTL -n "$NS" set image deploy/ope-core ope-core="$OPE_IMAGE"
+          $KUBECTL -n "$NS" set image deploy/ope-tool-runner ope-tool-runner="$OPE_IMAGE"
           $KUBECTL -n "$NS" rollout restart deploy/litellm
           $KUBECTL -n "$NS" rollout restart deploy/ope-core
           $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=180s

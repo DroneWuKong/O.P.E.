@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ope-tool-runner
+  namespace: ope
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ope-tool-runner
+  template:
+    metadata:
+      labels:
+        app: ope-tool-runner
+    spec:
+      containers:
+        - name: ope-tool-runner
+          image: ghcr.io/dronewukong/ope-core:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "app.tool_runner"]
+          env:
+            - name: OPE_ENV
+              value: octoputer
+            - name: TOOL_RUNNER_WORKER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: TOOL_RUNNER_LEASE_SECONDS
+              value: "300"
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: ope-db
+                  key: postgres-dsn
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

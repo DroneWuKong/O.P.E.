@@ -55,11 +55,12 @@ request-level approval token (`tool_action_approved`) so `/plan` can explain a
 tool route while `/ask` rejects unapproved tool actions before memory or model
 side effects.
 
-Approved tool-action asks enqueue `pending_review` rows in `tool_jobs`. This is
-an audit/review queue, not an executor. A separate runner should be added before
-any command or cluster mutation is performed from queued jobs. Workers can
-atomically claim `approved` jobs with leases, heartbeat while running, then mark
-jobs `succeeded` or `failed`.
+Approved tool-action asks enqueue `pending_review` rows in `tool_jobs`. Workers
+can atomically claim `approved` jobs with leases, heartbeat while running, then
+mark jobs `succeeded` or `failed`.
+
+`k8s/tool-runner.yaml` deploys the runner at `replicas: 0` by default. The
+current runner only executes `noop` jobs and fails non-allowlisted tools.
 
 ## To-do before real deployment
 
