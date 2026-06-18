@@ -44,6 +44,18 @@ def test_auth_rejects_invalid_token(monkeypatch) -> None:
     assert exc.value.status_code == 403
 
 
+def test_auth_rejects_non_ascii_token_without_crashing(monkeypatch) -> None:
+    monkeypatch.setattr(auth, 'get_settings', lambda: SimpleNamespace(
+        ope_require_api_key=True,
+        ope_api_keys='secret-1',
+    ))
+
+    with pytest.raises(HTTPException) as exc:
+        auth.require_api_key('Bearer nope-\u2603')
+
+    assert exc.value.status_code == 403
+
+
 def test_auth_accepts_valid_token(monkeypatch) -> None:
     monkeypatch.setattr(auth, 'get_settings', lambda: SimpleNamespace(
         ope_require_api_key=True,

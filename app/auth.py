@@ -22,5 +22,6 @@ def require_api_key(authorization: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail={'error': 'missing_bearer_token'})
 
     token = authorization.removeprefix('Bearer ').strip()
-    if not any(secrets.compare_digest(token, key) for key in keys):
+    token_bytes = token.encode('utf-8')
+    if not any(secrets.compare_digest(token_bytes, key.encode('utf-8')) for key in keys):
         raise HTTPException(status_code=403, detail={'error': 'invalid_bearer_token'})
