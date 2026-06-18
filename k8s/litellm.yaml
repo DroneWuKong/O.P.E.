@@ -70,6 +70,8 @@ spec:
       labels:
         app: litellm
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: gupb
       dnsPolicy: None
       dnsConfig:
         nameservers:
