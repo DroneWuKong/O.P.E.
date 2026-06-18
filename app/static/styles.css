@@ -236,13 +236,24 @@ h2 {
 }
 
 .mini-button,
-.icon-button {
+.icon-button,
+.text-button {
   padding: 0 12px;
 }
 
 .icon-button {
   width: 42px;
   font-size: 1.2rem;
+}
+
+.text-button {
+  min-height: 32px;
+  border: 1px solid rgba(227, 154, 95, 0.24);
+  border-radius: 999px;
+  background: rgba(227, 154, 95, 0.08);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
 }
 
 .request-state,

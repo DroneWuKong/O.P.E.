@@ -18,7 +18,6 @@ const elements = {
   query: $('queryInput'),
   budget: $('budgetInput'),
   latency: $('latencyInput'),
-  saveKey: $('saveKeyInput'),
   search: $('searchInput'),
   tools: $('toolsInput'),
   approval: $('approvalInput'),
@@ -40,7 +39,6 @@ const elements = {
 
 elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
-elements.saveKey.checked = Boolean(state.apiKey);
 
 function normalizedApiKey() {
   return elements.apiKey.value.trim().replace(/^Bearer\s+/i, '');
@@ -64,13 +62,22 @@ function authHeaders() {
   if (key) {
     headers.Authorization = `Bearer ${key}`;
   }
-  if (elements.saveKey.checked) {
-    localStorage.setItem('ope.apiKey', key);
-  } else {
-    localStorage.removeItem('ope.apiKey');
-  }
+  persistApiKey();
   localStorage.setItem('ope.project', elements.project.value.trim() || 'ope-core');
   return headers;
+}
+
+function persistApiKey() {
+  const key = normalizedApiKey();
+  if (key) {
+    localStorage.setItem('ope.apiKey', key);
+  }
+}
+
+function forgetApiKey() {
+  elements.apiKey.value = '';
+  localStorage.removeItem('ope.apiKey');
+  refreshAll();
 }
 
 async function api(path, options = {}) {
@@ -433,8 +440,9 @@ $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
 $('resetCostButton').addEventListener('click', resetSessionCost);
+$('forgetKeyButton').addEventListener('click', forgetApiKey);
+elements.apiKey.addEventListener('input', persistApiKey);
 elements.apiKey.addEventListener('change', refreshAll);
-elements.saveKey.addEventListener('change', authHeaders);
 
 wireTabs();
 renderCost();
