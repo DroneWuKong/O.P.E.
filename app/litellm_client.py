@@ -30,11 +30,7 @@ async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list
             async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
                 resp = await client.post(
                     f'{settings.litellm_base_url}/chat/completions',
-                    json={
-                        'model': model,
-                        'messages': messages,
-                        'temperature': 0.2,
-                    },
+                    json=_chat_completion_payload(model, messages),
                     headers=headers,
                 )
             resp.raise_for_status()
@@ -62,3 +58,13 @@ def _reason_for_status(status_code: int) -> str:
     if status_code in {500, 502, 503}:
         return 'overloaded'
     return f'http_{status_code}'
+
+
+def _chat_completion_payload(model: str, messages: list[dict[str, str]]) -> dict[str, object]:
+    payload: dict[str, object] = {
+        'model': model,
+        'messages': messages,
+    }
+    if not model.startswith('openai-'):
+        payload['temperature'] = 0.2
+    return payload
