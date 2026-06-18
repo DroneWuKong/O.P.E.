@@ -67,7 +67,7 @@ def test_routes_catalog() -> None:
     assert response.status_code == 200
     routes = {route['route']: route for route in response.json()['routes']}
     assert 'quick_lookup' in routes
-    assert routes['quick_lookup']['primary_model'] == 'mistral-fast'
+    assert routes['quick_lookup']['primary_model'] == 'openai-mini'
     assert routes['tool_action']['tools_enabled'] is True
 
 
@@ -180,7 +180,7 @@ def test_recent_events(monkeypatch) -> None:
                 query='What should OPE do?',
                 query_type='quick_lookup',
                 selected_route='quick_lookup',
-                selected_model='mistral-fast',
+                selected_model='openai-mini',
                 success=True,
                 latency_ms=42,
                 created_at='2026-06-17T12:00:00+00:00',
@@ -194,7 +194,7 @@ def test_recent_events(monkeypatch) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body['events'][0]['id'] == 'event-1'
-    assert body['events'][0]['selected_model'] == 'mistral-fast'
+    assert body['events'][0]['selected_model'] == 'openai-mini'
 
 
 def test_create_tool_job_requires_approval() -> None:
@@ -413,14 +413,14 @@ def test_ask_records_query_event_when_enabled(monkeypatch) -> None:
         return 'evented answer', primary, ['gemini-fast']
 
     async def fake_record(*args, **kwargs):
-        assert kwargs['selected_model'] == 'mistral-fast'
+        assert kwargs['selected_model'] == 'openai-mini'
         assert kwargs['fallback_models'] == ['gemini-fast']
         assert kwargs['sources_used'] == ['memory-1']
         assert kwargs['success'] is True
         return 'event-1'
 
     async def fake_update(**kwargs):
-        assert kwargs['model_alias'] == 'mistral-fast'
+        assert kwargs['model_alias'] == 'openai-mini'
         assert kwargs['success'] is True
 
     monkeypatch.setattr(

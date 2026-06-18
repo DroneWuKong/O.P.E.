@@ -1,10 +1,8 @@
 routes:
   quick_lookup:
-    planner_model: mistral-fast
-    primary_model: mistral-fast
-    fallbacks:
-      - openai-mini
-      - gemini-fast
+    planner_model: openai-mini
+    primary_model: openai-mini
+    fallbacks: []
     search_enabled: false
     verify: false
 
@@ -45,7 +43,7 @@ routes:
     verify: true
 
   private_memory:
-    planner_model: mistral-fast
+    planner_model: openai-mini
     primary_model: openai-main
     fallbacks:
       - claude-main

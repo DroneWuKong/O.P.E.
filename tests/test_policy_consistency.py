@@ -54,7 +54,7 @@ def test_memory_text_index_uses_immutable_expression() -> None:
 
 
 def test_build_plan_uses_route_policy() -> None:
-    assert build_plan(AskRequest(query='quick lookup please')).primary_model == 'mistral-fast'
+    assert build_plan(AskRequest(query='quick lookup please')).primary_model == 'openai-mini'
     assert build_plan(AskRequest(query='debug this code path')).primary_model == 'claude-coding'
     assert build_plan(AskRequest(query='deploy this', allow_tools=True)).route == 'tool_action'
 

@@ -49,23 +49,7 @@ data:
     router_settings:
       num_retries: 0
       timeout: 30
-      fallbacks:
-        - openai-main:
-            - claude-main
-            - gemini-main
-            - mistral-large
-        - openai-mini:
-            - gemini-fast
-            - mistral-fast
-        - openai-coding:
-            - claude-coding
-            - gemini-main
-        - claude-coding:
-            - openai-coding
-            - gemini-main
-        - mistral-fast:
-            - openai-mini
-            - gemini-fast
+      fallbacks: []
 
     litellm_settings:
       num_retries: 0
