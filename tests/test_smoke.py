@@ -13,6 +13,15 @@ from app.models import MemoryItem, MemoryStatsResponse, QueryEvent, ToolJob, Too
 client = TestClient(main.app)
 
 
+def test_root_index() -> None:
+    response = client.get('/')
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['service'] == 'ope-core'
+    assert body['endpoints']['ask'] == '/ask'
+
+
 def test_health() -> None:
     response = client.get('/health')
 

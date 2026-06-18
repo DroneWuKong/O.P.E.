@@ -95,6 +95,26 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title='OPE Core', version='0.1.0', lifespan=lifespan)
 
 
+@app.get('/')
+def root() -> dict:
+    return {
+        'ok': True,
+        'service': 'ope-core',
+        'cluster': 'Octoputer',
+        'message': 'OPE Core is running. Use /health, /ready, /routes, /plan, or /ask.',
+        'auth': 'Protected API routes require Authorization: Bearer <ope-api-key>.',
+        'endpoints': {
+            'health': '/health',
+            'ready': '/ready',
+            'routes': '/routes',
+            'plan': '/plan',
+            'ask': '/ask',
+            'memory_search': '/memory/search',
+            'tool_queue_stats': '/tools/queue/stats',
+        },
+    }
+
+
 @app.get('/health')
 def health() -> dict:
     return {'ok': True, 'service': 'ope-core', 'cluster': 'Octoputer'}
