@@ -48,6 +48,7 @@ def test_models_status(monkeypatch) -> None:
     response = client.get('/models/status')
 
     assert response.status_code == 200
+    assert 'gemini-fast' in response.json()['models']
     assert response.json()['provider_health']['openai-main']['available'] is True
     assert response.json()['model_stats'] == []
 
@@ -115,6 +116,18 @@ def test_plan_preview() -> None:
     approved_body = approved_response.json()
     assert approved_body['approval_granted'] is True
     assert approved_body['needs_tools'] is True
+
+
+def test_plan_respects_manual_route_mode() -> None:
+    response = client.post(
+        '/plan',
+        json={'query': 'ordinary message', 'mode': 'technical_search', 'allow_search': True},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['route'] == 'technical_search'
+    assert body['needs_search'] is True
 
 
 def test_ask_blocks_unapproved_tool_action(monkeypatch) -> None:

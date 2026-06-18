@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import get_args
 
 import yaml
 
@@ -11,9 +12,13 @@ TECH_TERMS = {'k3s', 'kubernetes', 'yaml', 'docker', 'api', 'github', 'repo', 'l
 CODE_TERMS = {'code', 'bug', 'test', 'audit', 'refactor', 'build', 'compile', 'function', 'class'}
 SEARCH_TERMS = {'latest', 'current', 'today', 'recent', 'docs', 'version', 'price', 'release'}
 TOOL_TERMS = {'deploy', 'create', 'update', 'delete', 'run', 'apply', 'restart', 'commit', 'open pr'}
+QUERY_TYPES = set(get_args(QueryType))
 
 
 def classify(req: AskRequest) -> QueryType:
+    if req.mode in QUERY_TYPES:
+        return req.mode
+
     q = req.query.lower()
     words = set(q.replace('/', ' ').replace('-', ' ').split())
 
@@ -34,6 +39,17 @@ def classify(req: AskRequest) -> QueryType:
 def load_route_policy() -> dict:
     path = Path(__file__).resolve().parent.parent / 'policies' / 'routing-policy.yaml'
     return yaml.safe_load(path.read_text(encoding='utf-8'))['routes']
+
+
+@lru_cache
+def load_model_catalog() -> list[str]:
+    path = Path(__file__).resolve().parent.parent / 'policies' / 'litellm-config.yaml'
+    config = yaml.safe_load(path.read_text(encoding='utf-8'))
+    return sorted(model['model_name'] for model in config.get('model_list', []))
+
+
+def list_model_aliases() -> list[str]:
+    return load_model_catalog()
 
 
 def _route_spec(route: QueryType, spec: dict) -> RouteSpec:

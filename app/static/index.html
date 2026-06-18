@@ -11,7 +11,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Optimized Processing Engine</p>
-          <h1>O.P.E. Control</h1>
+          <h1>O.P.E. Chat</h1>
         </div>
         <div class="status-row" aria-live="polite">
           <span class="status-pill" id="healthStatus">Health: checking</span>
@@ -23,60 +23,13 @@
         <section class="command-surface" aria-labelledby="askTitle">
           <div class="toolbar">
             <div>
-              <h2 id="askTitle">Ask</h2>
-              <p>Route a request through O.P.E. and see the decision trail.</p>
+              <h2 id="askTitle">Conversation</h2>
+              <p>Message O.P.E. and keep the route, model, and cost trail close.</p>
             </div>
             <button class="icon-button" id="refreshButton" type="button" title="Refresh status and side panels" aria-label="Refresh">
               <span aria-hidden="true">R</span>
             </button>
           </div>
-
-          <form id="askForm" class="ask-form">
-            <label class="field wide">
-              <span>Prompt</span>
-              <textarea id="queryInput" rows="7" placeholder="Ask O.P.E. what it can do right now..."></textarea>
-            </label>
-
-            <div class="form-grid">
-              <label class="field">
-                <span>API key</span>
-                <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
-              </label>
-              <label class="field">
-                <span>Project</span>
-                <input id="projectInput" type="text" value="ope-core" />
-              </label>
-              <label class="field">
-                <span>Budget</span>
-                <select id="budgetInput">
-                  <option value="low">Low</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Latency</span>
-                <select id="latencyInput">
-                  <option value="fast">Fast</option>
-                  <option value="normal" selected>Normal</option>
-                  <option value="patient">Patient</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="toggle-row">
-              <label><input id="searchInput" type="checkbox" checked /> Search allowed</label>
-              <label><input id="toolsInput" type="checkbox" /> Tools allowed</label>
-              <label><input id="approvalInput" type="checkbox" /> Tool approval token</label>
-              <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
-            </div>
-
-            <div class="action-row">
-              <button class="primary-button" id="askButton" type="submit">Send</button>
-              <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
-              <span id="requestState" class="request-state">Idle</span>
-            </div>
-          </form>
 
           <section class="answer-panel" aria-live="polite">
             <div class="answer-head">
@@ -98,24 +51,94 @@
             </div>
             <pre id="answerOutput">Ask something to start.</pre>
           </section>
+
+          <form id="askForm" class="ask-form">
+            <label class="field composer-field">
+              <span>Message</span>
+              <textarea id="queryInput" rows="3" placeholder="Ask O.P.E. what it can do right now..."></textarea>
+            </label>
+
+            <div class="action-row">
+              <button class="primary-button" id="askButton" type="submit">Send</button>
+              <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
+              <span id="requestState" class="request-state">Idle</span>
+            </div>
+
+            <details class="option-drawer">
+              <summary>Routing settings</summary>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Route</span>
+                  <select id="modeInput">
+                    <option value="auto" selected>Auto route</option>
+                    <option value="quick_lookup">Quick lookup</option>
+                    <option value="technical_search">Technical search</option>
+                    <option value="codebase_work">Codebase work</option>
+                    <option value="deep_reasoning">Deep reasoning</option>
+                    <option value="private_memory">Private memory</option>
+                    <option value="tool_action">Tool action</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Project</span>
+                  <input id="projectInput" type="text" value="ope-core" />
+                </label>
+                <label class="field">
+                  <span>Budget</span>
+                  <select id="budgetInput">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Latency</span>
+                  <select id="latencyInput">
+                    <option value="fast">Fast</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="patient">Patient</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="toggle-row">
+                <label><input id="searchInput" type="checkbox" checked /> Search</label>
+                <label><input id="toolsInput" type="checkbox" /> Tools</label>
+                <label><input id="approvalInput" type="checkbox" /> Approval token</label>
+              </div>
+            </details>
+
+            <details class="option-drawer access-drawer">
+              <summary>Access</summary>
+              <div class="access-row">
+                <label class="field">
+                  <span>API key</span>
+                  <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
+                </label>
+                <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
+              </div>
+            </details>
+          </form>
         </section>
 
         <aside class="side-rail">
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Route</h2>
-              <button class="mini-button" id="routesButton" type="button">Load</button>
-            </div>
+          <details class="panel rail-drawer">
+            <summary>
+              <span>Routes</span>
+              <span class="summary-hint">catalog</span>
+            </summary>
+            <button class="mini-button rail-button" id="routesButton" type="button">Refresh routes</button>
             <div id="routePanel" class="route-stack"></div>
-          </section>
+          </details>
 
-          <section class="panel">
-            <div class="panel-head">
-              <h2>Models</h2>
-              <button class="mini-button" id="modelsButton" type="button">Load</button>
-            </div>
+          <details class="panel rail-drawer" open>
+            <summary>
+              <span>Models</span>
+              <span class="summary-hint">health</span>
+            </summary>
+            <button class="mini-button rail-button" id="modelsButton" type="button">Refresh models</button>
             <div id="modelsPanel" class="status-list"></div>
-          </section>
+          </details>
         </aside>
       </main>
 

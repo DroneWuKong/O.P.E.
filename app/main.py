@@ -32,7 +32,7 @@ from app.models import (
 )
 from app.approvals import list_approval_rules, tokens_approve_route
 from app.auth import require_api_key
-from app.planner import build_plan, list_routes
+from app.planner import build_plan, list_model_aliases, list_routes
 from app.memory import (
     close_memory_store,
     init_memory_store,
@@ -155,6 +155,7 @@ async def models_status() -> dict:
     provider_status = await provider_health.status()
     model_stats = [] if settings.ope_disable_event_logging else await list_model_stats()
     return {
+        'models': list_model_aliases(),
         'provider_health': provider_status,
         'model_stats': model_stats,
     }

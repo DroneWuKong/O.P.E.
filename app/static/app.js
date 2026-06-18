@@ -1,6 +1,7 @@
 const state = {
   apiKey: localStorage.getItem('ope.apiKey') || '',
   project: localStorage.getItem('ope.project') || 'ope-core',
+  mode: localStorage.getItem('ope.mode') || 'auto',
   sessionTotals: JSON.parse(sessionStorage.getItem('ope.sessionTotals') || 'null') || {
     messages: 0,
     inputTokens: 0,
@@ -15,6 +16,7 @@ const $ = (id) => document.getElementById(id);
 const elements = {
   apiKey: $('apiKeyInput'),
   project: $('projectInput'),
+  mode: $('modeInput'),
   query: $('queryInput'),
   budget: $('budgetInput'),
   latency: $('latencyInput'),
@@ -39,6 +41,7 @@ const elements = {
 
 elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
+elements.mode.value = state.mode;
 
 function normalizedApiKey() {
   return elements.apiKey.value.trim().replace(/^Bearer\s+/i, '');
@@ -64,6 +67,7 @@ function authHeaders() {
   }
   persistApiKey();
   localStorage.setItem('ope.project', elements.project.value.trim() || 'ope-core');
+  localStorage.setItem('ope.mode', elements.mode.value || 'auto');
   return headers;
 }
 
@@ -176,6 +180,35 @@ function resetSessionCost() {
   renderCost();
 }
 
+function routeLabel(value) {
+  return String(value || '')
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function modelStatusText(info = {}) {
+  const failure = info.last_failure ? String(info.last_failure).replaceAll('_', ' ') : '';
+  const cooldown = Number(info.cooldown_remaining_seconds || 0);
+  if (cooldown > 0) {
+    return failure ? `cooling down ${cooldown}s after ${failure}` : `cooling down ${cooldown}s`;
+  }
+  if (failure) {
+    return `ready, previous issue: ${failure}`;
+  }
+  return info.available ? 'ready' : 'no recent health signal';
+}
+
+function modelStatusClass(info = {}) {
+  if (Number(info.cooldown_remaining_seconds || 0) > 0 || info.available === false) {
+    return 'warn';
+  }
+  if (info.last_failure || info.available !== true) {
+    return 'watch';
+  }
+  return 'ok';
+}
+
 function requestBody() {
   const tokens = elements.approval.checked ? ['tool_action_approved'] : [];
   return {
@@ -186,6 +219,7 @@ function requestBody() {
     approval_tokens: tokens,
     budget: elements.budget.value,
     latency: elements.latency.value,
+    mode: elements.mode.value,
   };
 }
 
@@ -281,10 +315,14 @@ async function loadRoutes() {
   try {
     const data = await api('/routes');
     elements.routes.innerHTML = data.routes.map((route) => `
-      <div class="route-item">
-        <strong>${escapeHtml(route.route)}</strong>
-        <span>${escapeHtml(route.primary_model)}${route.fallback_models.length ? ` / ${escapeHtml(route.fallback_models.join(', '))}` : ''}</span>
-      </div>
+      <details class="route-item">
+        <summary>
+          <strong>${escapeHtml(routeLabel(route.route))}</strong>
+          <span>${escapeHtml(route.primary_model)}</span>
+        </summary>
+        <p>${route.search_enabled ? 'Search on' : 'Search off'} / ${route.tools_enabled ? 'tools capable' : 'no tools'}${route.verify ? ' / verify' : ''}</p>
+        ${route.fallback_models.length ? `<small>Fallbacks: ${escapeHtml(route.fallback_models.join(', '))}</small>` : '<small>No fallbacks configured.</small>'}
+      </details>
     `).join('');
   } catch (error) {
     renderEmpty(elements.routes, error.message);
@@ -296,12 +334,16 @@ async function loadModels() {
   try {
     const data = await api('/models/status');
     const provider = data.provider_health || {};
-    const rows = Object.entries(provider).map(([name, info]) => `
-      <div class="status-item">
+    const names = data.models?.length ? data.models : Object.keys(provider);
+    const rows = names.map((name) => {
+      const info = provider[name] || { available: null };
+      return `
+      <div class="status-item ${modelStatusClass(info)}">
         <strong>${escapeHtml(name)}</strong>
-        <span>${info.available ? 'available' : `cooldown ${info.cooldown_remaining_seconds || 0}s`} ${info.last_failure ? `- ${escapeHtml(info.last_failure)}` : ''}</span>
+        <span>${escapeHtml(modelStatusText(info))}</span>
       </div>
-    `);
+    `;
+    });
     elements.models.innerHTML = rows.join('') || '<p class="empty">No provider health recorded yet.</p>';
   } catch (error) {
     renderEmpty(elements.models, error.message);
@@ -443,6 +485,13 @@ $('resetCostButton').addEventListener('click', resetSessionCost);
 $('forgetKeyButton').addEventListener('click', forgetApiKey);
 elements.apiKey.addEventListener('input', persistApiKey);
 elements.apiKey.addEventListener('change', refreshAll);
+elements.mode.addEventListener('change', () => {
+  localStorage.setItem('ope.mode', elements.mode.value || 'auto');
+});
+elements.project.addEventListener('change', () => {
+  localStorage.setItem('ope.project', elements.project.value.trim() || 'ope-core');
+  refreshAll();
+});
 
 wireTabs();
 renderCost();
