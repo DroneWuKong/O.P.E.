@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import asyncio
+from decimal import Decimal
 import logging
 from pathlib import Path
 import time
@@ -203,7 +204,7 @@ async def ask(req: AskRequest) -> AskResponse:
 
     route_timeout_seconds = getattr(settings, 'request_timeout_seconds', 120)
     try:
-        answer, model_used, fallbacks_attempted = await asyncio.wait_for(
+        model_result = await asyncio.wait_for(
             call_with_fallbacks(
                 plan.primary_model,
                 plan.fallback_models,
@@ -211,6 +212,8 @@ async def ask(req: AskRequest) -> AskResponse:
             ),
             timeout=route_timeout_seconds,
         )
+        answer, model_used, fallbacks_attempted = model_result[:3]
+        model_metadata = model_result[3] if len(model_result) > 3 else {}
     except Exception as exc:
         latency_ms = int((time.perf_counter() - started) * 1000)
         failure_message = str(exc) or f'model route timed out after {route_timeout_seconds}s'
@@ -245,6 +248,7 @@ async def ask(req: AskRequest) -> AskResponse:
     latency_ms = int((time.perf_counter() - started) * 1000)
     query_event_id = None
     tool_job_id = None
+    estimated_cost = _decimal_or_none(model_metadata.get('estimated_cost_usd'))
     if not settings.ope_disable_event_logging:
         query_event_id = await record_query_event(
             req,
@@ -254,6 +258,7 @@ async def ask(req: AskRequest) -> AskResponse:
             sources_used=[m.id for m in memories if m.id],
             success=True,
             latency_ms=latency_ms,
+            estimated_cost=estimated_cost,
         )
         if model_used:
             await update_model_stats(
@@ -261,6 +266,7 @@ async def ask(req: AskRequest) -> AskResponse:
                 task_type=plan.query_type,
                 success=True,
                 latency_ms=latency_ms,
+                estimated_cost=estimated_cost,
             )
 
     if plan.route == 'tool_action' and plan.needs_tools:
@@ -295,8 +301,15 @@ async def ask(req: AskRequest) -> AskResponse:
             'query_event_id': query_event_id,
             'tool_job_id': tool_job_id,
             'latency_ms': latency_ms,
+            **model_metadata,
         },
     )
+
+
+def _decimal_or_none(value: object) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))
 
 
 @app.post('/memory/write', response_model=MemoryItem, dependencies=[Depends(require_api_key)])

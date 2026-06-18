@@ -1,6 +1,13 @@
 const state = {
   apiKey: localStorage.getItem('ope.apiKey') || '',
   project: localStorage.getItem('ope.project') || 'ope-core',
+  sessionTotals: JSON.parse(sessionStorage.getItem('ope.sessionTotals') || 'null') || {
+    messages: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    costUsd: 0,
+  },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -18,6 +25,10 @@ const elements = {
   requestState: $('requestState'),
   answer: $('answerOutput'),
   answerMetrics: $('answerMetrics'),
+  messageCost: $('messageCost'),
+  messageTokens: $('messageTokens'),
+  sessionCost: $('sessionCost'),
+  sessionTokens: $('sessionTokens'),
   health: $('healthStatus'),
   ready: $('readyStatus'),
   routes: $('routePanel'),
@@ -113,6 +124,51 @@ function renderMetrics(items) {
     .join('');
 }
 
+function formatUsd(value) {
+  const amount = Number(value || 0);
+  if (amount >= 0.01) return `$${amount.toFixed(4)}`;
+  return `$${amount.toFixed(6)}`;
+}
+
+function renderCost(message = {}) {
+  const usage = message.usage || {};
+  const messageCost = Number(message.estimated_cost_usd || 0);
+  const inputTokens = Number(usage.input_tokens || 0);
+  const outputTokens = Number(usage.output_tokens || 0);
+  const totalTokens = Number(usage.total_tokens || 0);
+  elements.messageCost.textContent = formatUsd(messageCost);
+  elements.messageTokens.textContent = `${totalTokens.toLocaleString()} tokens (${inputTokens.toLocaleString()} in / ${outputTokens.toLocaleString()} out)`;
+  elements.sessionCost.textContent = formatUsd(state.sessionTotals.costUsd);
+  elements.sessionTokens.textContent = `${state.sessionTotals.messages.toLocaleString()} messages / ${state.sessionTotals.totalTokens.toLocaleString()} tokens`;
+}
+
+function addMessageCost(metadata = {}) {
+  const usage = metadata.usage || {};
+  const costUsd = Number(metadata.estimated_cost_usd || 0);
+  const inputTokens = Number(usage.input_tokens || 0);
+  const outputTokens = Number(usage.output_tokens || 0);
+  const totalTokens = Number(usage.total_tokens || inputTokens + outputTokens);
+  state.sessionTotals.messages += 1;
+  state.sessionTotals.inputTokens += inputTokens;
+  state.sessionTotals.outputTokens += outputTokens;
+  state.sessionTotals.totalTokens += totalTokens;
+  state.sessionTotals.costUsd += costUsd;
+  sessionStorage.setItem('ope.sessionTotals', JSON.stringify(state.sessionTotals));
+  renderCost(metadata);
+}
+
+function resetSessionCost() {
+  state.sessionTotals = {
+    messages: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    costUsd: 0,
+  };
+  sessionStorage.setItem('ope.sessionTotals', JSON.stringify(state.sessionTotals));
+  renderCost();
+}
+
 function requestBody() {
   const tokens = elements.approval.checked ? ['tool_action_approved'] : [];
   return {
@@ -170,8 +226,11 @@ async function submitAsk(event) {
       { label: 'route', value: result.route_plan?.route },
       { label: 'model', value: result.model_used },
       { label: 'latency', value: `${result.metadata?.latency_ms || elapsed} ms` },
+      { label: 'tokens', value: result.metadata?.usage?.total_tokens },
+      { label: 'est. cost', value: formatUsd(result.metadata?.estimated_cost_usd) },
       { label: 'memory', value: result.memory_used?.length || 0 },
     ]);
+    addMessageCost(result.metadata || {});
     setBusy('Ready');
     loadEvents();
     loadModels();
@@ -373,8 +432,10 @@ $('eventsButton').addEventListener('click', loadEvents);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
+$('resetCostButton').addEventListener('click', resetSessionCost);
 elements.apiKey.addEventListener('change', refreshAll);
 elements.saveKey.addEventListener('change', authHeaders);
 
 wireTabs();
+renderCost();
 refreshAll();

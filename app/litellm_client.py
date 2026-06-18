@@ -3,6 +3,19 @@ from app.config import get_settings
 from app.provider_health import provider_health
 
 
+PRICE_PER_MILLION_TOKENS = {
+    'openai-main': {'input': 1.25, 'output': 10.0},
+    'openai-mini': {'input': 0.25, 'output': 2.0},
+    'openai-coding': {'input': 1.25, 'output': 10.0},
+    'claude-main': {'input': 3.0, 'output': 15.0},
+    'claude-coding': {'input': 3.0, 'output': 15.0},
+    'gemini-main': {'input': 1.25, 'output': 10.0},
+    'gemini-fast': {'input': 0.30, 'output': 2.50},
+    'mistral-large': {'input': 2.0, 'output': 6.0},
+    'mistral-fast': {'input': 0.20, 'output': 0.60},
+}
+
+
 def _clean_header_value(value: str | None) -> str | None:
     if value is None:
         return None
@@ -10,7 +23,7 @@ def _clean_header_value(value: str | None) -> str | None:
     return cleaned or None
 
 
-async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list[dict[str, str]]) -> tuple[str, str, list[str]]:
+async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list[dict[str, str]]) -> tuple[str, str, list[str], dict]:
     settings = get_settings()
     attempted: list[str] = []
     last_error = None
@@ -36,7 +49,7 @@ async def call_with_fallbacks(primary: str, fallbacks: list[str], messages: list
             resp.raise_for_status()
             data = resp.json()
             await provider_health.mark_success(model)
-            return data['choices'][0]['message']['content'], model, attempted[:-1]
+            return data['choices'][0]['message']['content'], model, attempted[:-1], _usage_metadata(model, data)
         except httpx.HTTPStatusError as exc:
             last_error = exc
             reason = _reason_for_status(exc.response.status_code)
@@ -68,3 +81,28 @@ def _chat_completion_payload(model: str, messages: list[dict[str, str]]) -> dict
     if not model.startswith('openai-'):
         payload['temperature'] = 0.2
     return payload
+
+
+def _usage_metadata(model: str, response: dict) -> dict:
+    usage = response.get('usage') or {}
+    input_tokens = int(usage.get('prompt_tokens') or 0)
+    output_tokens = int(usage.get('completion_tokens') or 0)
+    total_tokens = int(usage.get('total_tokens') or input_tokens + output_tokens)
+    pricing = PRICE_PER_MILLION_TOKENS.get(model)
+    estimated_cost_usd = None
+    if pricing:
+        estimated_cost_usd = (
+            (input_tokens / 1_000_000) * pricing['input']
+            + (output_tokens / 1_000_000) * pricing['output']
+        )
+
+    return {
+        'usage': {
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens,
+            'total_tokens': total_tokens,
+        },
+        'estimated_cost_usd': estimated_cost_usd,
+        'cost_is_estimate': True,
+        'pricing_basis': 'static alias price estimate per 1M tokens',
+    }

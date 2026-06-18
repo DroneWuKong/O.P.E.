@@ -83,6 +83,19 @@
               <h2>Answer</h2>
               <div class="metrics" id="answerMetrics"></div>
             </div>
+            <div class="cost-ledger" aria-label="Message and session cost">
+              <div>
+                <span>Message estimate</span>
+                <strong id="messageCost">$0.000000</strong>
+                <small id="messageTokens">0 tokens</small>
+              </div>
+              <div>
+                <span>Session estimate</span>
+                <strong id="sessionCost">$0.000000</strong>
+                <small id="sessionTokens">0 messages / 0 tokens</small>
+              </div>
+              <button class="mini-button cost-reset" id="resetCostButton" type="button">Reset</button>
+            </div>
             <pre id="answerOutput">Ask something to start.</pre>
           </section>
         </section>
