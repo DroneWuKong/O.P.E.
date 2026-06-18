@@ -13,6 +13,13 @@ spec:
       labels:
         app: ope-core
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: postgres
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: ope-core
           image: ghcr.io/dronewukong/ope-core:latest
