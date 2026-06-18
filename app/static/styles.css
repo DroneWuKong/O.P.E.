@@ -404,11 +404,17 @@ h2 {
 }
 
 .metrics,
-.cost-ledger {
+.cost-ledger,
+.answer-tools {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.answer-tools {
+  align-items: center;
+  min-width: 0;
 }
 
 .metric {
@@ -460,7 +466,7 @@ h2 {
   letter-spacing: 0;
 }
 
-pre {
+.chat-log {
   overflow: auto;
   min-height: 360px;
   max-height: 520px;
@@ -472,9 +478,67 @@ pre {
     rgba(3, 6, 5, 0.88);
   color: #f6eedf;
   padding: 18px;
-  white-space: pre-wrap;
   line-height: 1.55;
   font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.chat-empty {
+  min-height: 100%;
+}
+
+.chat-message {
+  border: 1px solid rgba(121, 132, 118, 0.18);
+  border-radius: 8px;
+  background: rgba(6, 9, 7, 0.72);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.chat-message.user {
+  border-color: rgba(36, 211, 107, 0.24);
+  margin-left: 9%;
+}
+
+.chat-message.assistant {
+  border-left: 3px solid var(--signal);
+  margin-right: 7%;
+}
+
+.chat-message.system {
+  border-color: rgba(215, 148, 77, 0.32);
+}
+
+.chat-message.pending .chat-message-body {
+  color: var(--muted);
+}
+
+.chat-message-head {
+  align-items: center;
+  border-bottom: 1px solid rgba(121, 132, 118, 0.14);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 9px 11px;
+}
+
+.chat-message-head strong {
+  color: var(--signal);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.chat-message-head span {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.chat-message-body {
+  color: #f6eedf;
+  padding: 12px;
+  white-space: pre-wrap;
 }
 
 .side-rail {
@@ -726,7 +790,22 @@ pre {
     grid-template-columns: 1fr;
   }
 
-  pre {
+  .chat-log {
     min-height: 300px;
+  }
+
+  .answer-tools {
+    justify-content: stretch;
+  }
+
+  .answer-tools .metrics,
+  .answer-tools .mini-button {
+    width: 100%;
+  }
+
+  .chat-message.user,
+  .chat-message.assistant {
+    margin-left: 0;
+    margin-right: 0;
   }
 }

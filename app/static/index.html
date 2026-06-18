@@ -38,8 +38,11 @@
 
           <section class="answer-panel" aria-live="polite">
             <div class="answer-head">
-              <h2>Answer</h2>
-              <div class="metrics" id="answerMetrics"></div>
+              <h2>Session</h2>
+              <div class="answer-tools">
+                <div class="metrics" id="answerMetrics"></div>
+                <button class="mini-button" id="clearChatButton" type="button">Clear chat</button>
+              </div>
             </div>
             <div class="cost-ledger" aria-label="Message and session cost">
               <div>
@@ -54,7 +57,7 @@
               </div>
               <button class="mini-button cost-reset" id="resetCostButton" type="button">Reset</button>
             </div>
-            <pre id="answerOutput">Ask something to start.</pre>
+            <div id="answerOutput" class="chat-log"></div>
           </section>
 
           <form id="askForm" class="ask-form">

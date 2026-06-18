@@ -9,6 +9,7 @@ const state = {
     totalTokens: 0,
     costUsd: 0,
   },
+  chatMessages: JSON.parse(sessionStorage.getItem('ope.chatMessages') || '[]'),
 };
 
 const $ = (id) => document.getElementById(id);
@@ -135,6 +136,72 @@ function renderMetrics(items) {
     .join('');
 }
 
+function saveChatMessages() {
+  sessionStorage.setItem('ope.chatMessages', JSON.stringify(state.chatMessages));
+}
+
+function chatMessageMeta(message) {
+  const usage = message.metadata?.usage || {};
+  const details = [
+    message.route ? `route ${message.route}` : '',
+    message.model ? `model ${message.model}` : '',
+    message.metadata?.latency_ms ? `${message.metadata.latency_ms} ms` : '',
+    usage.total_tokens ? `${Number(usage.total_tokens).toLocaleString()} tokens` : '',
+    message.metadata?.estimated_cost_usd !== undefined ? formatUsd(message.metadata.estimated_cost_usd) : '',
+  ].filter(Boolean);
+  return details.join(' / ');
+}
+
+function renderChat() {
+  if (!state.chatMessages.length) {
+    elements.answer.innerHTML = '<p class="empty chat-empty">Ask something to start.</p>';
+    return;
+  }
+  elements.answer.innerHTML = state.chatMessages.map((message) => {
+    const meta = chatMessageMeta(message);
+    return `
+      <article class="chat-message ${escapeHtml(message.role)} ${message.status === 'pending' ? 'pending' : ''}">
+        <div class="chat-message-head">
+          <strong>${message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'O.P.E.'}</strong>
+          ${meta ? `<span>${escapeHtml(meta)}</span>` : ''}
+        </div>
+        <div class="chat-message-body">${escapeHtml(message.content)}</div>
+      </article>
+    `;
+  }).join('');
+  elements.answer.scrollTop = elements.answer.scrollHeight;
+}
+
+function appendChatMessage(role, content, extras = {}) {
+  const message = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    role,
+    content,
+    createdAt: new Date().toISOString(),
+    ...extras,
+  };
+  state.chatMessages.push(message);
+  saveChatMessages();
+  renderChat();
+  return message.id;
+}
+
+function updateChatMessage(id, updates) {
+  state.chatMessages = state.chatMessages.map((message) => (
+    message.id === id ? { ...message, ...updates } : message
+  ));
+  saveChatMessages();
+  renderChat();
+}
+
+function clearChatMessages() {
+  state.chatMessages = [];
+  saveChatMessages();
+  renderChat();
+  renderMetrics([]);
+  setBusy('Idle');
+}
+
 function formatUsd(value) {
   const amount = Number(value || 0);
   if (amount >= 0.01) return `$${amount.toFixed(4)}`;
@@ -243,17 +310,19 @@ async function submitAsk(event) {
   event.preventDefault();
   const body = requestBody();
   if (!hasApiKey()) {
-    elements.answer.textContent = 'Enter your OPE API key first.';
+    setBusy('Need key');
     return;
   }
   if (!body.query) {
-    elements.answer.textContent = 'Give O.P.E. a prompt first.';
+    setBusy('Need message');
     return;
   }
 
   setBusy('Routing...');
-  elements.answer.textContent = 'Thinking...';
   renderMetrics([]);
+  appendChatMessage('user', body.query);
+  elements.query.value = '';
+  const assistantMessageId = appendChatMessage('assistant', 'Thinking...', { status: 'pending' });
 
   try {
     const started = performance.now();
@@ -262,7 +331,6 @@ async function submitAsk(event) {
       body: JSON.stringify(body),
     });
     const elapsed = Math.round(performance.now() - started);
-    elements.answer.textContent = result.answer;
     renderMetrics([
       { label: 'route', value: result.route_plan?.route },
       { label: 'model', value: result.model_used },
@@ -271,12 +339,26 @@ async function submitAsk(event) {
       { label: 'est. cost', value: formatUsd(result.metadata?.estimated_cost_usd) },
       { label: 'memory', value: result.memory_used?.length || 0 },
     ]);
+    updateChatMessage(assistantMessageId, {
+      content: result.answer,
+      status: 'complete',
+      route: result.route_plan?.route,
+      model: result.model_used,
+      metadata: {
+        ...(result.metadata || {}),
+        latency_ms: result.metadata?.latency_ms || elapsed,
+      },
+    });
     addMessageCost(result.metadata || {});
     setBusy('Ready');
     loadEvents();
     loadModels();
   } catch (error) {
-    elements.answer.innerHTML = `<span class="error-text">${escapeHtml(error.message)}</span>`;
+    updateChatMessage(assistantMessageId, {
+      content: error.message,
+      status: 'failed',
+      role: 'system',
+    });
     setBusy('Failed');
   }
 }
@@ -284,11 +366,11 @@ async function submitAsk(event) {
 async function previewPlan() {
   const body = requestBody();
   if (!hasApiKey()) {
-    elements.answer.textContent = 'Enter your OPE API key first.';
+    setBusy('Need key');
     return;
   }
   if (!body.query) {
-    elements.answer.textContent = 'Give O.P.E. a prompt first.';
+    setBusy('Need message');
     return;
   }
   setBusy('Planning...');
@@ -297,7 +379,10 @@ async function previewPlan() {
       method: 'POST',
       body: JSON.stringify(body),
     });
-    elements.answer.textContent = JSON.stringify(plan, null, 2);
+    appendChatMessage('system', JSON.stringify(plan, null, 2), {
+      route: plan.route,
+      model: plan.primary_model,
+    });
     renderMetrics([
       { label: 'route', value: plan.route },
       { label: 'primary', value: plan.primary_model },
@@ -482,6 +567,7 @@ $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
 $('resetCostButton').addEventListener('click', resetSessionCost);
+$('clearChatButton').addEventListener('click', clearChatMessages);
 $('forgetKeyButton').addEventListener('click', forgetApiKey);
 elements.apiKey.addEventListener('input', persistApiKey);
 elements.apiKey.addEventListener('change', refreshAll);
@@ -495,4 +581,5 @@ elements.project.addEventListener('change', () => {
 
 wireTabs();
 renderCost();
+renderChat();
 refreshAll();
