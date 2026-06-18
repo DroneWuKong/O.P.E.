@@ -193,6 +193,18 @@ class ToolJobsResponse(BaseModel):
     jobs: list[ToolJob] = Field(default_factory=list)
 
 
+class ToolQueueStatsResponse(BaseModel):
+    project: str | None = None
+    total: int = 0
+    by_status: dict[str, int] = Field(default_factory=dict)
+    running: int = 0
+    expired_leases: int = 0
+    oldest_pending_review_at: str | None = None
+    oldest_approved_at: str | None = None
+    newest_created_at: str | None = None
+    newest_updated_at: str | None = None
+
+
 class ToolJobClaimRequest(BaseModel):
     worker_id: str = Field(..., min_length=1)
     project: str | None = None

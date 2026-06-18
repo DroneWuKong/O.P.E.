@@ -7,7 +7,7 @@ os.environ['OPE_DISABLE_EVENT_LOGGING'] = 'true'
 from fastapi.testclient import TestClient
 
 from app import main
-from app.models import MemoryItem, MemoryStatsResponse, QueryEvent, ToolJob
+from app.models import MemoryItem, MemoryStatsResponse, QueryEvent, ToolJob, ToolQueueStatsResponse
 
 
 client = TestClient(main.app)
@@ -244,6 +244,29 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     assert list_response.json()['jobs'][0]['id'] == 'job-1'
     assert update_response.status_code == 200
     assert update_response.json()['status'] == 'approved'
+
+
+def test_tool_queue_stats(monkeypatch) -> None:
+    async def fake_stats(project=None):
+        assert project == 'ope-core'
+        return ToolQueueStatsResponse(
+            project=project,
+            total=4,
+            by_status={'approved': 2, 'running': 1, 'failed': 1},
+            running=1,
+            expired_leases=1,
+            oldest_approved_at='2026-06-18T04:30:00+00:00',
+            newest_updated_at='2026-06-18T04:40:00+00:00',
+        )
+
+    monkeypatch.setattr(main, 'tool_queue_stats', fake_stats)
+
+    response = client.get('/tools/queue/stats?project=ope-core')
+
+    assert response.status_code == 200
+    assert response.json()['total'] == 4
+    assert response.json()['by_status']['approved'] == 2
+    assert response.json()['expired_leases'] == 1
 
 
 def test_claim_and_heartbeat_tool_job(monkeypatch) -> None:

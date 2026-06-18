@@ -3,7 +3,18 @@ from __future__ import annotations
 import json
 
 from app.memory import get_memory_pool
-from app.models import ToolJob, ToolJobClaimRequest, ToolJobCreateRequest, ToolJobHeartbeatRequest, ToolJobUpdateRequest
+from app.models import (
+    ToolJob,
+    ToolJobClaimRequest,
+    ToolJobCreateRequest,
+    ToolJobHeartbeatRequest,
+    ToolJobUpdateRequest,
+    ToolQueueStatsResponse,
+)
+
+
+def _iso_or_none(value) -> str | None:
+    return value.isoformat() if value else None
 
 
 def _row_to_tool_job(row) -> ToolJob:
@@ -88,6 +99,50 @@ async def list_tool_jobs(
             limit,
         )
     return [_row_to_tool_job(row) for row in rows]
+
+
+async def tool_queue_stats(*, project: str | None = None) -> ToolQueueStatsResponse:
+    pool = get_memory_pool()
+    async with pool.acquire() as conn:
+        by_status_rows = await conn.fetch(
+            """
+            SELECT status, count(*) AS count
+            FROM tool_jobs
+            WHERE ($1::text IS NULL OR project_id = $1)
+            GROUP BY status
+            ORDER BY status ASC
+            """,
+            project,
+        )
+        summary = await conn.fetchrow(
+            """
+            SELECT
+              count(*) FILTER (WHERE status = 'running') AS running,
+              count(*) FILTER (
+                WHERE status = 'running' AND lease_expires_at < now()
+              ) AS expired_leases,
+              min(created_at) FILTER (WHERE status = 'pending_review') AS oldest_pending_review_at,
+              min(created_at) FILTER (WHERE status = 'approved') AS oldest_approved_at,
+              max(created_at) AS newest_created_at,
+              max(updated_at) AS newest_updated_at
+            FROM tool_jobs
+            WHERE ($1::text IS NULL OR project_id = $1)
+            """,
+            project,
+        )
+
+    by_status = {row['status']: row['count'] for row in by_status_rows}
+    return ToolQueueStatsResponse(
+        project=project,
+        total=sum(by_status.values()),
+        by_status=by_status,
+        running=summary['running'] or 0,
+        expired_leases=summary['expired_leases'] or 0,
+        oldest_pending_review_at=_iso_or_none(summary['oldest_pending_review_at']),
+        oldest_approved_at=_iso_or_none(summary['oldest_approved_at']),
+        newest_created_at=_iso_or_none(summary['newest_created_at']),
+        newest_updated_at=_iso_or_none(summary['newest_updated_at']),
+    )
 
 
 async def update_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob | None:

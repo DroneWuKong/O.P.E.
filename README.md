@@ -63,6 +63,7 @@ curl -s 'http://localhost:8080/events/recent?project=ope-core&limit=10'
 curl -s http://localhost:8080/routes
 curl -s http://localhost:8080/approvals
 curl -s 'http://localhost:8080/tools/jobs?status=pending_review&limit=10'
+curl -s 'http://localhost:8080/tools/queue/stats?project=ope-core'
 curl -s http://localhost:8080/tools/jobs/claim \
   -H 'Content-Type: application/json' \
   -d '{"worker_id":"worker-a","project":"ope-core","lease_seconds":300}'
@@ -96,6 +97,7 @@ curl -H "Authorization: Bearer <ope-api-key>" http://localhost:8080/routes
 - `GET /routes`
 - `GET /approvals`
 - `GET /tools/jobs`
+- `GET /tools/queue/stats`
 - `POST /tools/jobs`
 - `POST /tools/jobs/claim`
 - `POST /tools/jobs/{job_id}/heartbeat`
@@ -125,6 +127,9 @@ Approved tool-action asks create a `pending_review` tool job. Tool jobs are
 auditable queue records only; O.P.E. does not execute commands yet. Future
 workers can atomically claim approved jobs with a lease and refresh that lease
 with heartbeat calls.
+
+`/tools/queue/stats` summarizes backlog, running jobs, expired leases, and the
+oldest waiting jobs for operator dashboards or deployment smoke checks.
 
 The included `app.tool_runner` process is intentionally narrow: it only executes
 `noop` jobs, marks all other tools failed, and ships as a zero-replica Kubernetes

@@ -59,6 +59,9 @@ Approved tool-action asks enqueue `pending_review` rows in `tool_jobs`. Workers
 can atomically claim `approved` jobs with leases, heartbeat while running, then
 mark jobs `succeeded` or `failed`.
 
+Use `/tools/queue/stats` to check pending review backlog, approved backlog,
+running jobs, and expired leases before scaling tool runners.
+
 `k8s/tool-runner.yaml` deploys the runner at `replicas: 0` by default. The
 current runner only executes `noop` jobs and fails non-allowlisted tools.
 

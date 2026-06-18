@@ -21,6 +21,7 @@ from app.models import (
     ToolJobCreateRequest,
     ToolJobHeartbeatRequest,
     ToolJobsResponse,
+    ToolQueueStatsResponse,
     ToolJobStatus,
     ToolJobUpdateRequest,
 )
@@ -40,7 +41,14 @@ from app.memory import (
 from app.events import list_model_stats, list_query_events, record_query_event, update_model_stats
 from app.litellm_client import call_with_fallbacks
 from app.provider_health import provider_health
-from app.tools import claim_next_tool_job, create_tool_job, heartbeat_tool_job, list_tool_jobs, update_tool_job
+from app.tools import (
+    claim_next_tool_job,
+    create_tool_job,
+    heartbeat_tool_job,
+    list_tool_jobs,
+    tool_queue_stats,
+    update_tool_job,
+)
 
 
 @asynccontextmanager
@@ -271,6 +279,11 @@ async def tool_jobs(
     return ToolJobsResponse(
         jobs=await list_tool_jobs(project=project, status=status, limit=limit)
     )
+
+
+@app.get('/tools/queue/stats', response_model=ToolQueueStatsResponse, dependencies=[Depends(require_api_key)])
+async def tool_queue_stats_endpoint(project: str | None = None) -> ToolQueueStatsResponse:
+    return await tool_queue_stats(project=project)
 
 
 @app.patch('/tools/jobs/{job_id}', response_model=ToolJob, dependencies=[Depends(require_api_key)])
