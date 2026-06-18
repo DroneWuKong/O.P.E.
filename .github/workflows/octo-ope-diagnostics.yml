@@ -37,6 +37,7 @@ jobs:
             sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local"
           $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
           $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
+          exit 0
 
       - name: Describe OPE workloads
         run: |
