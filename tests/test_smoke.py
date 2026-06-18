@@ -246,6 +246,47 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     assert update_response.json()['status'] == 'approved'
 
 
+def test_claim_and_heartbeat_tool_job(monkeypatch) -> None:
+    running_job = ToolJob(
+        id='job-1',
+        project='ope-core',
+        tool_name='shell',
+        action='run',
+        payload={'command': 'date'},
+        status='running',
+        worker_id='worker-a',
+        lease_expires_at='2026-06-18T04:30:00+00:00',
+    )
+
+    async def fake_claim(req):
+        assert req.worker_id == 'worker-a'
+        assert req.project == 'ope-core'
+        assert req.lease_seconds == 60
+        return running_job
+
+    async def fake_heartbeat(job_id, req):
+        assert job_id == 'job-1'
+        assert req.worker_id == 'worker-a'
+        return running_job
+
+    monkeypatch.setattr(main, 'claim_next_tool_job', fake_claim)
+    monkeypatch.setattr(main, 'heartbeat_tool_job', fake_heartbeat)
+
+    claim_response = client.post(
+        '/tools/jobs/claim',
+        json={'worker_id': 'worker-a', 'project': 'ope-core', 'lease_seconds': 60},
+    )
+    heartbeat_response = client.post(
+        '/tools/jobs/job-1/heartbeat',
+        json={'worker_id': 'worker-a', 'lease_seconds': 60},
+    )
+
+    assert claim_response.status_code == 200
+    assert claim_response.json()['worker_id'] == 'worker-a'
+    assert heartbeat_response.status_code == 200
+    assert heartbeat_response.json()['status'] == 'running'
+
+
 def test_ask_route(monkeypatch) -> None:
     async def fake_recall(req, plan):
         return [

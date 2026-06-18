@@ -165,6 +165,8 @@ class ToolJob(BaseModel):
     status: ToolJobStatus = 'pending_review'
     requested_by: str | None = None
     approved_by: str | None = None
+    worker_id: str | None = None
+    lease_expires_at: str | None = None
     result: dict[str, Any] | None = None
     error: str | None = None
     created_at: str | None = None
@@ -189,3 +191,14 @@ class ToolJobUpdateRequest(BaseModel):
 
 class ToolJobsResponse(BaseModel):
     jobs: list[ToolJob] = Field(default_factory=list)
+
+
+class ToolJobClaimRequest(BaseModel):
+    worker_id: str = Field(..., min_length=1)
+    project: str | None = None
+    lease_seconds: int = Field(300, ge=30, le=3600)
+
+
+class ToolJobHeartbeatRequest(BaseModel):
+    worker_id: str = Field(..., min_length=1)
+    lease_seconds: int = Field(300, ge=30, le=3600)

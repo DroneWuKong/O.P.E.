@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS tool_jobs (
   status TEXT NOT NULL DEFAULT 'pending_review',
   requested_by TEXT,
   approved_by TEXT,
+  worker_id TEXT,
+  lease_expires_at TIMESTAMPTZ,
   result JSONB,
   error TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -79,7 +81,10 @@ ALTER TABLE query_events ADD COLUMN IF NOT EXISTS failure_reason TEXT;
 ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS query_event_id UUID REFERENCES query_events(id) ON DELETE SET NULL;
 ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS route TEXT NOT NULL DEFAULT 'tool_action';
 ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS approved_by TEXT;
+ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS worker_id TEXT;
+ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS lease_expires_at TIMESTAMPTZ;
 ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS result JSONB;
 ALTER TABLE tool_jobs ADD COLUMN IF NOT EXISTS error TEXT;
 CREATE INDEX IF NOT EXISTS idx_tool_jobs_project_status ON tool_jobs(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_tool_jobs_created_at ON tool_jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tool_jobs_claimable ON tool_jobs(status, lease_expires_at, created_at);

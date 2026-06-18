@@ -63,6 +63,9 @@ curl -s 'http://localhost:8080/events/recent?project=ope-core&limit=10'
 curl -s http://localhost:8080/routes
 curl -s http://localhost:8080/approvals
 curl -s 'http://localhost:8080/tools/jobs?status=pending_review&limit=10'
+curl -s http://localhost:8080/tools/jobs/claim \
+  -H 'Content-Type: application/json' \
+  -d '{"worker_id":"worker-a","project":"ope-core","lease_seconds":300}'
 curl -s http://localhost:8080/plan \
   -H 'Content-Type: application/json' \
   -d '{"query":"please deploy this","allow_tools":true}'
@@ -88,6 +91,8 @@ curl -s http://localhost:8080/memory/search \
 - `GET /approvals`
 - `GET /tools/jobs`
 - `POST /tools/jobs`
+- `POST /tools/jobs/claim`
+- `POST /tools/jobs/{job_id}/heartbeat`
 - `PATCH /tools/jobs/{job_id}`
 - `POST /plan`
 - `POST /ask`
@@ -111,7 +116,9 @@ classified without approval, but `/ask` rejects it until the request includes th
 matching approval token, currently `tool_action_approved`.
 
 Approved tool-action asks create a `pending_review` tool job. Tool jobs are
-auditable queue records only; O.P.E. does not execute commands yet.
+auditable queue records only; O.P.E. does not execute commands yet. Future
+workers can atomically claim approved jobs with a lease and refresh that lease
+with heartbeat calls.
 
 ## Smoke tests
 

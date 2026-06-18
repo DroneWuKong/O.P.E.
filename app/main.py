@@ -17,7 +17,9 @@ from app.models import (
     RoutePlan,
     RoutesResponse,
     ToolJob,
+    ToolJobClaimRequest,
     ToolJobCreateRequest,
+    ToolJobHeartbeatRequest,
     ToolJobsResponse,
     ToolJobStatus,
     ToolJobUpdateRequest,
@@ -37,7 +39,7 @@ from app.memory import (
 from app.events import list_model_stats, list_query_events, record_query_event, update_model_stats
 from app.litellm_client import call_with_fallbacks
 from app.provider_health import provider_health
-from app.tools import create_tool_job, list_tool_jobs, update_tool_job
+from app.tools import claim_next_tool_job, create_tool_job, heartbeat_tool_job, list_tool_jobs, update_tool_job
 
 
 @asynccontextmanager
@@ -275,4 +277,17 @@ async def patch_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob:
     job = await update_tool_job(job_id, req)
     if job is None:
         raise HTTPException(status_code=404, detail={'error': 'tool_job_not_found'})
+    return job
+
+
+@app.post('/tools/jobs/claim', response_model=ToolJob | None)
+async def claim_tool_job(req: ToolJobClaimRequest) -> ToolJob | None:
+    return await claim_next_tool_job(req)
+
+
+@app.post('/tools/jobs/{job_id}/heartbeat', response_model=ToolJob)
+async def heartbeat_tool_job_endpoint(job_id: str, req: ToolJobHeartbeatRequest) -> ToolJob:
+    job = await heartbeat_tool_job(job_id, req)
+    if job is None:
+        raise HTTPException(status_code=409, detail={'error': 'tool_job_not_claimed_by_worker'})
     return job

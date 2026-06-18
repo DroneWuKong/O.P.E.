@@ -57,7 +57,9 @@ side effects.
 
 Approved tool-action asks enqueue `pending_review` rows in `tool_jobs`. This is
 an audit/review queue, not an executor. A separate runner should be added before
-any command or cluster mutation is performed from queued jobs.
+any command or cluster mutation is performed from queued jobs. Workers can
+atomically claim `approved` jobs with leases, heartbeat while running, then mark
+jobs `succeeded` or `failed`.
 
 ## To-do before real deployment
 

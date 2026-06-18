@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from app.memory import get_memory_pool
-from app.models import ToolJob, ToolJobCreateRequest, ToolJobUpdateRequest
+from app.models import ToolJob, ToolJobClaimRequest, ToolJobCreateRequest, ToolJobHeartbeatRequest, ToolJobUpdateRequest
 
 
 def _row_to_tool_job(row) -> ToolJob:
@@ -25,6 +25,8 @@ def _row_to_tool_job(row) -> ToolJob:
         status=row['status'],
         requested_by=row['requested_by'],
         approved_by=row['approved_by'],
+        worker_id=row['worker_id'],
+        lease_expires_at=row['lease_expires_at'].isoformat() if row['lease_expires_at'] else None,
         result=result,
         error=row['error'],
         created_at=row['created_at'].isoformat() if row['created_at'] else None,
@@ -48,7 +50,7 @@ async def create_tool_job(
             )
             VALUES ($1, $2::uuid, $3, $4, $5, $6::jsonb, 'pending_review', $7)
             RETURNING id, project_id, query_event_id, route, tool_name, action,
-              payload, status, requested_by, approved_by, result, error,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
               created_at, updated_at
             """,
             req.project,
@@ -73,7 +75,7 @@ async def list_tool_jobs(
         rows = await conn.fetch(
             """
             SELECT id, project_id, query_event_id, route, tool_name, action,
-              payload, status, requested_by, approved_by, result, error,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
               created_at, updated_at
             FROM tool_jobs
             WHERE ($1::text IS NULL OR project_id = $1)
@@ -99,10 +101,18 @@ async def update_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob | N
               approved_by = coalesce($3, approved_by),
               result = coalesce($4::jsonb, result),
               error = coalesce($5, error),
+              worker_id = CASE
+                WHEN $2 IN ('succeeded', 'failed', 'cancelled') THEN NULL
+                ELSE worker_id
+              END,
+              lease_expires_at = CASE
+                WHEN $2 IN ('succeeded', 'failed', 'cancelled') THEN NULL
+                ELSE lease_expires_at
+              END,
               updated_at = now()
             WHERE id = $1::uuid
             RETURNING id, project_id, query_event_id, route, tool_name, action,
-              payload, status, requested_by, approved_by, result, error,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
               created_at, updated_at
             """,
             job_id,
@@ -112,4 +122,60 @@ async def update_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob | N
             req.error,
         )
 
+    return _row_to_tool_job(row) if row else None
+
+
+async def claim_next_tool_job(req: ToolJobClaimRequest) -> ToolJob | None:
+    pool = get_memory_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            WITH candidate AS (
+              SELECT id
+              FROM tool_jobs
+              WHERE status = 'approved'
+                AND ($1::text IS NULL OR project_id = $1)
+                AND (lease_expires_at IS NULL OR lease_expires_at < now())
+              ORDER BY created_at ASC
+              FOR UPDATE SKIP LOCKED
+              LIMIT 1
+            )
+            UPDATE tool_jobs
+            SET
+              status = 'running',
+              worker_id = $2,
+              lease_expires_at = now() + make_interval(secs => $3),
+              updated_at = now()
+            WHERE id = (SELECT id FROM candidate)
+            RETURNING id, project_id, query_event_id, route, tool_name, action,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
+              created_at, updated_at
+            """,
+            req.project,
+            req.worker_id,
+            req.lease_seconds,
+        )
+    return _row_to_tool_job(row) if row else None
+
+
+async def heartbeat_tool_job(job_id: str, req: ToolJobHeartbeatRequest) -> ToolJob | None:
+    pool = get_memory_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE tool_jobs
+            SET
+              lease_expires_at = now() + make_interval(secs => $3),
+              updated_at = now()
+            WHERE id = $1::uuid
+              AND status = 'running'
+              AND worker_id = $2
+            RETURNING id, project_id, query_event_id, route, tool_name, action,
+              payload, status, requested_by, approved_by, worker_id, lease_expires_at, result, error,
+              created_at, updated_at
+            """,
+            job_id,
+            req.worker_id,
+            req.lease_seconds,
+        )
     return _row_to_tool_job(row) if row else None
