@@ -89,9 +89,11 @@ metadata:
   name: ope-core
   namespace: ope
 spec:
+  type: NodePort
   selector:
     app: ope-core
   ports:
     - name: http
       port: 8080
       targetPort: 8080
+      nodePort: 30080

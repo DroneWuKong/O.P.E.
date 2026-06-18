@@ -74,6 +74,14 @@ and readiness probes remain unauthenticated.
 
 ## Public Tailnet URL
 
+O.P.E. Core is also reachable directly through the k3s NodePort:
+
+- `http://100.81.235.34:30080`
+
+LiteLLM is exposed for operator checks through:
+
+- `http://100.81.235.34:30400`
+
 Traefik exposes O.P.E. at:
 
 - `http://ope.100.81.235.34.sslip.io`

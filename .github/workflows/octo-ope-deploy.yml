@@ -157,10 +157,13 @@ jobs:
       - name: Smoke endpoints from inside cluster
         run: |
           set -e
-          OPE_CORE_HOST="$($KUBECTL -n "$NS" get svc ope-core -o jsonpath='{.spec.clusterIP}')"
-          $KUBECTL -n "$NS" run ope-smoke --rm -i --restart=Never \
-            --image=curlimages/curl:8.11.1 -- \
-            sh -c "curl -fsS http://$OPE_CORE_HOST:8080/health && curl -fsS http://$OPE_CORE_HOST:8080/ready"
+          $KUBECTL -n "$NS" exec deploy/ope-core -- python -c "import urllib.request; [print(urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=10).read().decode()) for path in ('/health', '/ready')]"
+
+      - name: Smoke tailnet NodePort
+        run: |
+          set -e
+          curl -fsS "http://$OPE_PUBLIC_LB_IP:30080/health"
+          curl -fsS "http://$OPE_PUBLIC_LB_IP:30080/ready"
 
       - name: Smoke Traefik ingress
         run: |
