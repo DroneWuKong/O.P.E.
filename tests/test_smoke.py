@@ -7,7 +7,7 @@ os.environ['OPE_DISABLE_EVENT_LOGGING'] = 'true'
 from fastapi.testclient import TestClient
 
 from app import main
-from app.models import MemoryItem, MemoryStatsResponse, QueryEvent
+from app.models import MemoryItem, MemoryStatsResponse, QueryEvent, ToolJob
 
 
 client = TestClient(main.app)
@@ -187,6 +187,65 @@ def test_recent_events(monkeypatch) -> None:
     assert body['events'][0]['selected_model'] == 'mistral-fast'
 
 
+def test_create_tool_job_requires_approval() -> None:
+    response = client.post(
+        '/tools/jobs',
+        json={'tool_name': 'shell', 'action': 'run', 'payload': {'command': 'date'}},
+    )
+
+    assert response.status_code == 403
+    assert response.json()['detail']['required_approval'] == 'tool_action_approved'
+
+
+def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
+    job = ToolJob(
+        id='job-1',
+        project='ope-core',
+        tool_name='shell',
+        action='run',
+        payload={'command': 'date'},
+        status='pending_review',
+    )
+
+    async def fake_create(req, query_event_id=None, route='tool_action'):
+        assert req.approval_tokens == ['tool_action_approved']
+        return job
+
+    async def fake_list(project=None, status=None, limit=25):
+        assert project == 'ope-core'
+        assert status == 'pending_review'
+        assert limit == 5
+        return [job]
+
+    async def fake_update(job_id, req):
+        assert job_id == 'job-1'
+        return job.model_copy(update={'status': req.status, 'approved_by': req.approved_by})
+
+    monkeypatch.setattr(main, 'create_tool_job', fake_create)
+    monkeypatch.setattr(main, 'list_tool_jobs', fake_list)
+    monkeypatch.setattr(main, 'update_tool_job', fake_update)
+
+    create_response = client.post(
+        '/tools/jobs',
+        json={
+            'project': 'ope-core',
+            'tool_name': 'shell',
+            'action': 'run',
+            'payload': {'command': 'date'},
+            'approval_tokens': ['tool_action_approved'],
+        },
+    )
+    list_response = client.get('/tools/jobs?project=ope-core&status=pending_review&limit=5')
+    update_response = client.patch('/tools/jobs/job-1', json={'status': 'approved', 'approved_by': 'operator'})
+
+    assert create_response.status_code == 200
+    assert create_response.json()['id'] == 'job-1'
+    assert list_response.status_code == 200
+    assert list_response.json()['jobs'][0]['id'] == 'job-1'
+    assert update_response.status_code == 200
+    assert update_response.json()['status'] == 'approved'
+
+
 def test_ask_route(monkeypatch) -> None:
     async def fake_recall(req, plan):
         return [
@@ -248,3 +307,47 @@ def test_ask_records_query_event_when_enabled(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()['metadata']['query_event_id'] == 'event-1'
+
+
+def test_approved_tool_action_ask_creates_tool_job(monkeypatch) -> None:
+    async def fake_recall(req, plan):
+        return []
+
+    async def fake_write(req, plan, answer):
+        return None
+
+    async def fake_call(primary, fallbacks, messages):
+        return 'Run a reviewed tool action.', primary, []
+
+    async def fake_record(*args, **kwargs):
+        return 'event-2'
+
+    async def fake_update(**kwargs):
+        return None
+
+    async def fake_create(req, query_event_id=None, route='tool_action'):
+        assert query_event_id == 'event-2'
+        assert route == 'tool_action'
+        assert req.tool_name == 'manual_review'
+        assert req.payload['query'] == 'please deploy this'
+        return ToolJob(id='job-2', project=req.project, tool_name=req.tool_name, action=req.action)
+
+    monkeypatch.setattr(main, 'get_settings', lambda: SimpleNamespace(ope_disable_event_logging=False))
+    monkeypatch.setattr(main, 'recall_memory', fake_recall)
+    monkeypatch.setattr(main, 'maybe_write_memory', fake_write)
+    monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)
+    monkeypatch.setattr(main, 'record_query_event', fake_record)
+    monkeypatch.setattr(main, 'update_model_stats', fake_update)
+    monkeypatch.setattr(main, 'create_tool_job', fake_create)
+
+    response = client.post(
+        '/ask',
+        json={
+            'query': 'please deploy this',
+            'allow_tools': True,
+            'approval_tokens': ['tool_action_approved'],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()['metadata']['tool_job_id'] == 'job-2'

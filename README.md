@@ -62,6 +62,7 @@ curl -s http://localhost:8080/memory/stats
 curl -s 'http://localhost:8080/events/recent?project=ope-core&limit=10'
 curl -s http://localhost:8080/routes
 curl -s http://localhost:8080/approvals
+curl -s 'http://localhost:8080/tools/jobs?status=pending_review&limit=10'
 curl -s http://localhost:8080/plan \
   -H 'Content-Type: application/json' \
   -d '{"query":"please deploy this","allow_tools":true}'
@@ -85,6 +86,9 @@ curl -s http://localhost:8080/memory/search \
 - `GET /events/recent`
 - `GET /routes`
 - `GET /approvals`
+- `GET /tools/jobs`
+- `POST /tools/jobs`
+- `PATCH /tools/jobs/{job_id}`
 - `POST /plan`
 - `POST /ask`
 - `POST /memory/write`
@@ -105,6 +109,9 @@ would choose without calling LiteLLM or writing memory.
 Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
 classified without approval, but `/ask` rejects it until the request includes the
 matching approval token, currently `tool_action_approved`.
+
+Approved tool-action asks create a `pending_review` tool job. Tool jobs are
+auditable queue records only; O.P.E. does not execute commands yet.
 
 ## Smoke tests
 

@@ -16,8 +16,13 @@ from app.models import (
     QueryEventsResponse,
     RoutePlan,
     RoutesResponse,
+    ToolJob,
+    ToolJobCreateRequest,
+    ToolJobsResponse,
+    ToolJobStatus,
+    ToolJobUpdateRequest,
 )
-from app.approvals import list_approval_rules
+from app.approvals import list_approval_rules, tokens_approve_route
 from app.planner import build_plan, list_routes
 from app.memory import (
     close_memory_store,
@@ -32,6 +37,7 @@ from app.memory import (
 from app.events import list_model_stats, list_query_events, record_query_event, update_model_stats
 from app.litellm_client import call_with_fallbacks
 from app.provider_health import provider_health
+from app.tools import create_tool_job, list_tool_jobs, update_tool_job
 
 
 @asynccontextmanager
@@ -159,6 +165,7 @@ async def ask(req: AskRequest) -> AskResponse:
     saved = await maybe_write_memory(req, plan, answer)
     latency_ms = int((time.perf_counter() - started) * 1000)
     query_event_id = None
+    tool_job_id = None
     if not settings.ope_disable_event_logging:
         query_event_id = await record_query_event(
             req,
@@ -177,6 +184,27 @@ async def ask(req: AskRequest) -> AskResponse:
                 latency_ms=latency_ms,
             )
 
+    if plan.route == 'tool_action' and plan.needs_tools:
+        tool_job = await create_tool_job(
+            ToolJobCreateRequest(
+                project=plan.project,
+                tool_name='manual_review',
+                action='tool_action_plan',
+                payload={
+                    'query': req.query,
+                    'route_plan': plan.model_dump(),
+                    'model_used': model_used,
+                    'fallbacks_attempted': fallbacks_attempted,
+                    'answer_preview': answer[:2000],
+                },
+                requested_by='ask',
+                approval_tokens=req.approval_tokens,
+            ),
+            query_event_id=query_event_id,
+            route=plan.route,
+        )
+        tool_job_id = tool_job.id
+
     return AskResponse(
         answer=answer,
         route_plan=plan,
@@ -186,6 +214,7 @@ async def ask(req: AskRequest) -> AskResponse:
         metadata={
             'memory_saved': saved is not None,
             'query_event_id': query_event_id,
+            'tool_job_id': tool_job_id,
             'latency_ms': latency_ms,
         },
     )
@@ -215,3 +244,35 @@ async def recent_events(
     return QueryEventsResponse(
         events=await list_query_events(project=project, success=success, limit=limit)
     )
+
+
+@app.post('/tools/jobs', response_model=ToolJob)
+async def create_tool_job_endpoint(req: ToolJobCreateRequest) -> ToolJob:
+    if not tokens_approve_route(req.approval_tokens, 'tool_action'):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                'error': 'approval_required',
+                'required_approval': 'tool_action_approved',
+            },
+        )
+    return await create_tool_job(req)
+
+
+@app.get('/tools/jobs', response_model=ToolJobsResponse)
+async def tool_jobs(
+    project: str | None = None,
+    status: ToolJobStatus | None = None,
+    limit: int = Query(25, ge=1, le=100),
+) -> ToolJobsResponse:
+    return ToolJobsResponse(
+        jobs=await list_tool_jobs(project=project, status=status, limit=limit)
+    )
+
+
+@app.patch('/tools/jobs/{job_id}', response_model=ToolJob)
+async def patch_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob:
+    job = await update_tool_job(job_id, req)
+    if job is None:
+        raise HTTPException(status_code=404, detail={'error': 'tool_job_not_found'})
+    return job

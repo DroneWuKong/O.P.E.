@@ -25,7 +25,11 @@ def approval_for_route(route: QueryType) -> ApprovalRule | None:
 
 
 def is_approved(req: AskRequest, route: QueryType) -> bool:
+    return tokens_approve_route(req.approval_tokens, route)
+
+
+def tokens_approve_route(tokens: list[str], route: QueryType) -> bool:
     rule = approval_for_route(route)
     if rule is None:
         return True
-    return rule.token in set(req.approval_tokens)
+    return rule.token in set(tokens)

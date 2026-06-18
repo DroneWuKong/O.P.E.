@@ -11,6 +11,15 @@ QueryType = Literal[
     'tool_action',
 ]
 
+ToolJobStatus = Literal[
+    'pending_review',
+    'approved',
+    'running',
+    'succeeded',
+    'failed',
+    'cancelled',
+]
+
 
 class AskRequest(BaseModel):
     query: str = Field(..., min_length=1)
@@ -143,3 +152,40 @@ class QueryEvent(BaseModel):
 
 class QueryEventsResponse(BaseModel):
     events: list[QueryEvent] = Field(default_factory=list)
+
+
+class ToolJob(BaseModel):
+    id: str
+    project: str | None = None
+    query_event_id: str | None = None
+    route: str = 'tool_action'
+    tool_name: str
+    action: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    status: ToolJobStatus = 'pending_review'
+    requested_by: str | None = None
+    approved_by: str | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class ToolJobCreateRequest(BaseModel):
+    project: str | None = None
+    tool_name: str = Field(..., min_length=1)
+    action: str = Field(..., min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    requested_by: str | None = None
+    approval_tokens: list[str] = Field(default_factory=list)
+
+
+class ToolJobUpdateRequest(BaseModel):
+    status: ToolJobStatus | None = None
+    approved_by: str | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+
+
+class ToolJobsResponse(BaseModel):
+    jobs: list[ToolJob] = Field(default_factory=list)

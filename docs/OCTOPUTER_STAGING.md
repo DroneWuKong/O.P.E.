@@ -55,6 +55,10 @@ request-level approval token (`tool_action_approved`) so `/plan` can explain a
 tool route while `/ask` rejects unapproved tool actions before memory or model
 side effects.
 
+Approved tool-action asks enqueue `pending_review` rows in `tool_jobs`. This is
+an audit/review queue, not an executor. A separate runner should be added before
+any command or cluster mutation is performed from queued jobs.
+
 ## To-do before real deployment
 
 - Create provider environment values as GitHub Actions secrets, not repo files.
