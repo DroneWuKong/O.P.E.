@@ -24,8 +24,19 @@ jobs:
         run: |
           set +e
           $KUBECTL get nodes -o wide
+          $KUBECTL -n kube-system get pods -o wide
+          $KUBECTL -n kube-system get svc -o wide
           $KUBECTL -n "$NS" get all -o wide
           $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
+
+      - name: DNS smoke
+        run: |
+          set +e
+          $KUBECTL -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
+            --image=busybox:1.36 -- \
+            sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local"
+          $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
+          $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
 
       - name: Describe OPE workloads
         run: |
@@ -39,6 +50,10 @@ jobs:
         run: |
           set +e
           $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
+          for pod in $($KUBECTL -n "$NS" get pods -l app=ope-core -o name); do
+            echo "---- previous logs: $pod ----"
+            $KUBECTL -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
+          done
           $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
           $KUBECTL -n "$NS" logs deploy/postgres --all-containers=true --tail=80
           $KUBECTL -n "$NS" logs deploy/redis --all-containers=true --tail=80

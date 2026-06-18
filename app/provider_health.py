@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import redis.asyncio as redis
@@ -14,8 +15,17 @@ class ProviderHealth:
     async def connect(self) -> None:
         if self._redis is not None:
             return
-        self._redis = redis.from_url(get_settings().redis_url, decode_responses=True)
-        await self._redis.ping()
+        settings = get_settings()
+        self._redis = redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=settings.ope_external_connect_timeout_seconds,
+            socket_timeout=settings.ope_external_connect_timeout_seconds,
+        )
+        await asyncio.wait_for(
+            self._redis.ping(),
+            timeout=settings.ope_external_connect_timeout_seconds,
+        )
 
     async def close(self) -> None:
         if self._redis is not None:

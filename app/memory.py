@@ -19,7 +19,12 @@ async def init_memory_store() -> None:
         return
 
     settings = get_settings()
-    _pool = await asyncpg.create_pool(settings.postgres_dsn, min_size=1, max_size=5)
+    _pool = await asyncpg.create_pool(
+        settings.postgres_dsn,
+        min_size=1,
+        max_size=5,
+        timeout=settings.ope_external_connect_timeout_seconds,
+    )
     if settings.ope_run_migrations_on_startup:
         migration = Path(__file__).resolve().parent.parent / 'migrations' / '001_initial_schema.sql'
         async with _pool.acquire() as conn:

@@ -96,6 +96,13 @@ jobs:
           $KUBECTL -n "$NS" rollout status deploy/postgres --timeout=180s
           $KUBECTL -n "$NS" rollout status deploy/redis --timeout=120s
 
+      - name: DNS smoke
+        run: |
+          set +e
+          $KUBECTL -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
+            --image=busybox:1.36 -- \
+            sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local"
+
       - name: Run database migration
         env:
           POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
@@ -135,4 +142,11 @@ jobs:
           $KUBECTL -n "$NS" describe pods -l app=ope-core
           $KUBECTL -n "$NS" describe pods -l app=litellm
           $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
+          for pod in $($KUBECTL -n "$NS" get pods -l app=ope-core -o name); do
+            echo "---- previous logs: $pod ----"
+            $KUBECTL -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
+          done
           $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
+          $KUBECTL -n kube-system get pods -o wide
+          $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
+          $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true

@@ -46,6 +46,7 @@ jobs:
               "policies/routing-policy.yaml",
               "policies/approval-policy.yaml",
               ".github/workflows/octo-ope-deploy.yml",
+              ".github/workflows/octo-ope-diagnostics.yml",
               ".github/workflows/ci.yml",
               ".github/workflows/image.yml",
           ]

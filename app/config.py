@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     ope_run_migrations_on_startup: bool = True
     ope_startup_retry_seconds: int = 120
     ope_startup_retry_interval_seconds: float = 5.0
+    ope_external_connect_timeout_seconds: float = 5.0
 
     litellm_base_url: str = 'http://litellm:4000'
     litellm_model: str = 'deep_reasoning'

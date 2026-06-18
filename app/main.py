@@ -71,9 +71,10 @@ async def connect_external_services() -> None:
             await provider_health.close()
             await close_memory_store()
             if time.monotonic() >= deadline:
+                logger.exception('external service startup failed after %s attempts', attempt)
                 raise
             logger.warning(
-                'external service startup attempt %s failed: %s',
+                'external service startup attempt %s failed: %r',
                 attempt,
                 exc,
             )
