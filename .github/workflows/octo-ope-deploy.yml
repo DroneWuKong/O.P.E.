@@ -166,7 +166,7 @@ jobs:
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/ready"
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/"
           rm -f /tmp/litellm-nodeport-smoke.txt
-          code="$(curl --noproxy '*' -sS --connect-timeout 5 --max-time 15 -o /tmp/litellm-nodeport-smoke.txt -w '%{http_code}' "http://$OPE_PUBLIC_LB_IP:30400/health" || true)"
+          code="$(curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 -sS --connect-timeout 5 --max-time 15 -o /tmp/litellm-nodeport-smoke.txt -w '%{http_code}' "http://$OPE_PUBLIC_LB_IP:30400/health" || true)"
           cat /tmp/litellm-nodeport-smoke.txt || true
           if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
             echo "::warning::LiteLLM NodePort did not answer cleanly; HTTP $code"
