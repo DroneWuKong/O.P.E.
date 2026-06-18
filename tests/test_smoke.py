@@ -370,6 +370,30 @@ def test_ask_route(monkeypatch) -> None:
     assert body['memory_used'][0]['summary'].startswith('OPE routes')
 
 
+def test_ask_includes_midwestern_voice_prompt(monkeypatch) -> None:
+    async def fake_recall(req, plan):
+        return []
+
+    async def fake_write(req, plan, answer):
+        return None
+
+    async def fake_call(primary, fallbacks, messages):
+        assert messages[0]['role'] == 'system'
+        assert 'deep Midwestern context' in messages[0]['content']
+        assert 'parody' in messages[0]['content']
+        assert messages[1]['role'] == 'user'
+        return 'Alright, here is the practical version.', primary, []
+
+    monkeypatch.setattr(main, 'recall_memory', fake_recall)
+    monkeypatch.setattr(main, 'maybe_write_memory', fake_write)
+    monkeypatch.setattr(main, 'call_with_fallbacks', fake_call)
+
+    response = client.post('/ask', json={'query': 'What should I check first?'})
+
+    assert response.status_code == 200
+    assert response.json()['answer'].startswith('Alright')
+
+
 def test_ask_model_failure_returns_gateway_error(monkeypatch) -> None:
     async def fake_recall(req, plan):
         return []
