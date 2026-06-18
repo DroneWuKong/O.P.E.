@@ -34,6 +34,7 @@ kubectl apply -f k8s/postgres.yaml
 kubectl apply -f k8s/redis.yaml
 kubectl apply -f k8s/litellm.yaml
 kubectl apply -f k8s/ope-core.yaml
+kubectl apply -f k8s/ingress.yaml
 ```
 
 ## Manual Workflow
@@ -71,10 +72,21 @@ current runner only executes `noop` jobs and fails non-allowlisted tools.
 Set GitHub secret `OPE_API_KEYS` to one or more comma-separated API keys. Health
 and readiness probes remain unauthenticated.
 
+## Public Tailnet URL
+
+Traefik exposes O.P.E. at:
+
+- `http://ope.100.81.235.34.sslip.io`
+- `https://ope.100.81.235.34.sslip.io`
+
+The HTTPS route uses Traefik's cluster TLS handling unless a real certificate is
+configured later, so command-line smoke tests use `curl -k`. Protected API calls
+still require `Authorization: Bearer <ope-api-key>`.
+
 ## To-do before real deployment
 
 - Create provider environment values as GitHub Actions secrets, not repo files.
 - Create `OPE_API_KEYS` as a GitHub Actions secret.
 - Create Kubernetes secrets from the workflow at deploy time.
-- Add an ingress or NodePort only after the internal service works.
+- Replace the sslip.io staging host with a real DNS name and certificate.
 - Decide whether O.P.E. should use the existing Octo MinIO for artifacts/log bundles.

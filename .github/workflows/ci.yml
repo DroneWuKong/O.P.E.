@@ -37,6 +37,7 @@ jobs:
               "docker-compose.local.yaml",
               "k8s/litellm.yaml",
               "k8s/ope-core.yaml",
+              "k8s/ingress.yaml",
               "k8s/tool-runner.yaml",
               "k8s/postgres.yaml",
               "k8s/redis.yaml",

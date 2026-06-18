@@ -23,6 +23,8 @@ jobs:
       NS: ope
       KUBECONFIG: ${{ vars.KUBECONFIG || '/etc/rancher/k3s/k3s.yaml' }}
       OPE_IMAGE: ${{ github.event.inputs.image || 'ghcr.io/dronewukong/ope-core:latest' }}
+      OPE_PUBLIC_HOST: ${{ vars.OPE_PUBLIC_HOST || 'ope.100.81.235.34.sslip.io' }}
+      OPE_PUBLIC_LB_IP: ${{ vars.OPE_PUBLIC_LB_IP || '100.81.235.34' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -140,6 +142,7 @@ jobs:
           $KUBECTL apply -f k8s/litellm.yaml
           $KUBECTL apply -f k8s/ope-core.yaml
           $KUBECTL apply -f k8s/tool-runner.yaml
+          $KUBECTL apply -f k8s/ingress.yaml
           LITELLM_HOST="$($KUBECTL -n "$NS" get svc litellm -o jsonpath='{.spec.clusterIP}')"
           $KUBECTL -n "$NS" set env deploy/ope-core \
             REDIS_URL="$REDIS_URL" \
@@ -159,6 +162,12 @@ jobs:
             --image=curlimages/curl:8.11.1 -- \
             sh -c "curl -fsS http://$OPE_CORE_HOST:8080/health && curl -fsS http://$OPE_CORE_HOST:8080/ready"
 
+      - name: Smoke Traefik ingress
+        run: |
+          set -e
+          curl -fsS --resolve "$OPE_PUBLIC_HOST:80:$OPE_PUBLIC_LB_IP" "http://$OPE_PUBLIC_HOST/health"
+          curl -kfsS --resolve "$OPE_PUBLIC_HOST:443:$OPE_PUBLIC_LB_IP" "https://$OPE_PUBLIC_HOST/health"
+
       - name: Diagnostics on failure
         if: failure()
         run: |
@@ -167,6 +176,7 @@ jobs:
           $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
           $KUBECTL -n "$NS" describe deploy/litellm
           $KUBECTL -n "$NS" describe deploy/ope-core
+          $KUBECTL -n "$NS" describe ingress
           $KUBECTL -n "$NS" describe pods -l app=ope-core
           $KUBECTL -n "$NS" describe pods -l app=litellm
           $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
