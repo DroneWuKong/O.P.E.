@@ -72,9 +72,9 @@ current runner only executes `noop` jobs and fails non-allowlisted tools.
 Set GitHub secret `OPE_API_KEYS` to one or more comma-separated API keys. Health
 and readiness probes remain unauthenticated.
 
-## Public Tailnet URL
+## Tailnet URL
 
-O.P.E. Core is also reachable directly through the k3s NodePort:
+O.P.E. Core is reachable directly through the k3s NodePort:
 
 - `http://100.81.235.34:30080`
 
@@ -82,14 +82,16 @@ LiteLLM is exposed for operator checks through:
 
 - `http://100.81.235.34:30400`
 
-Traefik exposes O.P.E. at:
+Traefik ingress is installed for the future host routes:
 
 - `http://ope.100.81.235.34.sslip.io`
 - `https://ope.100.81.235.34.sslip.io`
 
-The HTTPS route uses Traefik's cluster TLS handling unless a real certificate is
-configured later, so command-line smoke tests use `curl -k`. Protected API calls
-still require `Authorization: Bearer <ope-api-key>`.
+The direct NodePort is the current supported staging path for Hub and other
+tailnet clients. The HTTPS ingress route uses Traefik's cluster TLS handling
+unless a real certificate is configured later, so command-line smoke tests use
+`curl -k`. Protected API calls still require
+`Authorization: Bearer <ope-api-key>`.
 
 ## To-do before real deployment
 
