@@ -42,8 +42,17 @@ kubectl apply -f k8s/ingress.yaml
 Use **Octo - Deploy OPE** in GitHub Actions for normal staging deploys. It runs
 on `vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]'`, creates `ope-db` and
 `ope-provider-env` from GitHub secrets, applies manifests, runs
-`migrations/001_initial_schema.sql`, and verifies `/health` plus `/ready` from
-inside the cluster.
+`migrations/001_initial_schema.sql`, verifies `/health` plus `/ready` from the
+O.P.E. container, and verifies the tailnet-facing NodePorts from the runner.
+
+The staging services intentionally expose stable NodePorts for small tailnet
+clients such as Hangar Hub:
+
+- O.P.E. Core: `http://<octoputer-node>:30080`
+- LiteLLM: `http://<octoputer-node>:30400`
+
+Health and readiness stay open on O.P.E. Core. Other O.P.E. routes require
+`Authorization: Bearer <ope-api-key>` when `OPE_REQUIRE_API_KEY=true`.
 
 The deploy workflow defaults to `ghcr.io/dronewukong/ope-core:latest`, which is
 published by **Build OPE Core Image** after pushes to `main`. For safer manual

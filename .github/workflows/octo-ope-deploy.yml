@@ -154,7 +154,7 @@ jobs:
           $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=300s
           $KUBECTL -n "$NS" rollout status deploy/ope-core --timeout=300s
 
-      - name: Smoke endpoints from inside cluster
+      - name: Smoke endpoints from OPE container
         run: |
           set -e
           $KUBECTL -n "$NS" exec deploy/ope-core -- python -c "import urllib.request; [print(urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=10).read().decode()) for path in ('/health', '/ready')]"
@@ -164,6 +164,14 @@ jobs:
           set -e
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/health"
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/ready"
+          rm -f /tmp/litellm-nodeport-smoke.txt
+          code="$(curl --noproxy '*' -sS --connect-timeout 5 --max-time 15 -o /tmp/litellm-nodeport-smoke.txt -w '%{http_code}' "http://$OPE_PUBLIC_LB_IP:30400/health" || true)"
+          cat /tmp/litellm-nodeport-smoke.txt || true
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+            echo "::error::LiteLLM NodePort did not answer cleanly; HTTP $code"
+            exit 1
+          fi
+          echo "LiteLLM reachable with HTTP $code"
 
       - name: Smoke Traefik ingress advisory
         run: |

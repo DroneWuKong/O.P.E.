@@ -156,9 +156,18 @@ Octoputer control-plane runner pattern from `DroneWuKong/Ai-Project`: the job is
 pinned to `vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]'`, defaults
 `KUBECONFIG` to `/etc/rancher/k3s/k3s.yaml`, creates Kubernetes secrets from
 GitHub secrets, applies the `ope` namespace resources, runs the database
-migration, and smoke-tests `/health` plus `/ready` from inside the cluster.
+migration, smoke-tests `/health` plus `/ready` from the O.P.E. container, and
+smoke-tests the tailnet-facing NodePorts from the runner.
 By default it deploys `ghcr.io/dronewukong/ope-core:latest`; the manual `image`
 input can pin a tag or `sha-*` image.
+
+The Octoputer staging services expose stable NodePorts for Hangar Hub and other
+tailnet clients:
+
+- O.P.E. Core: `http://<octoputer-node>:30080`
+- LiteLLM: `http://<octoputer-node>:30400`
+
+Use an `Authorization: Bearer <ope-api-key>` header for protected O.P.E. routes.
 
 Required GitHub secrets:
 
