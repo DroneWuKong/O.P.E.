@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS tool_jobs (
 CREATE INDEX IF NOT EXISTS idx_memory_project_type ON memory_items(project_id, memory_type);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_items USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_memory_text ON memory_items
-  USING GIN(to_tsvector('english', summary || ' ' || array_to_string(tags, ' ')));
+  USING GIN(to_tsvector('english', summary));
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_project_key ON memory_items(project_id, memory_key)
   WHERE memory_key IS NOT NULL;
 
