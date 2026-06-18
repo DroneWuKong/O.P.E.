@@ -114,3 +114,16 @@ jobs:
           $KUBECTL -n "$NS" run ope-smoke --rm -i --restart=Never \
             --image=curlimages/curl:8.11.1 -- \
             sh -c "curl -fsS http://ope-core.ope.svc.cluster.local:8080/health && curl -fsS http://ope-core.ope.svc.cluster.local:8080/ready"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          set +e
+          $KUBECTL -n "$NS" get all -o wide
+          $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
+          $KUBECTL -n "$NS" describe deploy/litellm
+          $KUBECTL -n "$NS" describe deploy/ope-core
+          $KUBECTL -n "$NS" describe pods -l app=ope-core
+          $KUBECTL -n "$NS" describe pods -l app=litellm
+          $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
+          $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
