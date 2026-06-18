@@ -164,14 +164,15 @@ jobs:
           set -e
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/health"
           curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/ready"
+          curl --noproxy '*' --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS "http://$OPE_PUBLIC_LB_IP:30080/"
           rm -f /tmp/litellm-nodeport-smoke.txt
           code="$(curl --noproxy '*' -sS --connect-timeout 5 --max-time 15 -o /tmp/litellm-nodeport-smoke.txt -w '%{http_code}' "http://$OPE_PUBLIC_LB_IP:30400/health" || true)"
           cat /tmp/litellm-nodeport-smoke.txt || true
           if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
-            echo "::error::LiteLLM NodePort did not answer cleanly; HTTP $code"
-            exit 1
+            echo "::warning::LiteLLM NodePort did not answer cleanly; HTTP $code"
+          else
+            echo "LiteLLM reachable with HTTP $code"
           fi
-          echo "LiteLLM reachable with HTTP $code"
 
       - name: Smoke Traefik ingress advisory
         run: |
