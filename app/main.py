@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import time
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 from app.config import get_settings
 from app.models import (
@@ -25,6 +25,7 @@ from app.models import (
     ToolJobUpdateRequest,
 )
 from app.approvals import list_approval_rules, tokens_approve_route
+from app.auth import require_api_key
 from app.planner import build_plan, list_routes
 from app.memory import (
     close_memory_store,
@@ -83,7 +84,7 @@ async def ready() -> dict:
     return body
 
 
-@app.get('/models/status')
+@app.get('/models/status', dependencies=[Depends(require_api_key)])
 async def models_status() -> dict:
     settings = get_settings()
     provider_status = await provider_health.status()
@@ -94,22 +95,22 @@ async def models_status() -> dict:
     }
 
 
-@app.get('/routes', response_model=RoutesResponse)
+@app.get('/routes', response_model=RoutesResponse, dependencies=[Depends(require_api_key)])
 def routes() -> RoutesResponse:
     return RoutesResponse(routes=list_routes())
 
 
-@app.post('/plan', response_model=RoutePlan)
+@app.post('/plan', response_model=RoutePlan, dependencies=[Depends(require_api_key)])
 def plan(req: AskRequest) -> RoutePlan:
     return build_plan(req)
 
 
-@app.get('/approvals', response_model=ApprovalPolicyResponse)
+@app.get('/approvals', response_model=ApprovalPolicyResponse, dependencies=[Depends(require_api_key)])
 def approvals() -> ApprovalPolicyResponse:
     return ApprovalPolicyResponse(rules=list_approval_rules())
 
 
-@app.post('/ask', response_model=AskResponse)
+@app.post('/ask', response_model=AskResponse, dependencies=[Depends(require_api_key)])
 async def ask(req: AskRequest) -> AskResponse:
     settings = get_settings()
     started = time.perf_counter()
@@ -222,22 +223,22 @@ async def ask(req: AskRequest) -> AskResponse:
     )
 
 
-@app.post('/memory/write', response_model=MemoryItem)
+@app.post('/memory/write', response_model=MemoryItem, dependencies=[Depends(require_api_key)])
 async def memory_write(req: MemoryWriteRequest) -> MemoryItem:
     return await write_memory(req)
 
 
-@app.post('/memory/search', response_model=MemorySearchResponse)
+@app.post('/memory/search', response_model=MemorySearchResponse, dependencies=[Depends(require_api_key)])
 async def memory_search(req: MemorySearchRequest) -> MemorySearchResponse:
     return MemorySearchResponse(memories=await search_memory(req))
 
 
-@app.get('/memory/stats', response_model=MemoryStatsResponse)
+@app.get('/memory/stats', response_model=MemoryStatsResponse, dependencies=[Depends(require_api_key)])
 async def memory_stats_endpoint() -> MemoryStatsResponse:
     return await memory_stats()
 
 
-@app.get('/events/recent', response_model=QueryEventsResponse)
+@app.get('/events/recent', response_model=QueryEventsResponse, dependencies=[Depends(require_api_key)])
 async def recent_events(
     project: str | None = None,
     success: bool | None = None,
@@ -248,7 +249,7 @@ async def recent_events(
     )
 
 
-@app.post('/tools/jobs', response_model=ToolJob)
+@app.post('/tools/jobs', response_model=ToolJob, dependencies=[Depends(require_api_key)])
 async def create_tool_job_endpoint(req: ToolJobCreateRequest) -> ToolJob:
     if not tokens_approve_route(req.approval_tokens, 'tool_action'):
         raise HTTPException(
@@ -261,7 +262,7 @@ async def create_tool_job_endpoint(req: ToolJobCreateRequest) -> ToolJob:
     return await create_tool_job(req)
 
 
-@app.get('/tools/jobs', response_model=ToolJobsResponse)
+@app.get('/tools/jobs', response_model=ToolJobsResponse, dependencies=[Depends(require_api_key)])
 async def tool_jobs(
     project: str | None = None,
     status: ToolJobStatus | None = None,
@@ -272,7 +273,7 @@ async def tool_jobs(
     )
 
 
-@app.patch('/tools/jobs/{job_id}', response_model=ToolJob)
+@app.patch('/tools/jobs/{job_id}', response_model=ToolJob, dependencies=[Depends(require_api_key)])
 async def patch_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob:
     job = await update_tool_job(job_id, req)
     if job is None:
@@ -280,12 +281,12 @@ async def patch_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob:
     return job
 
 
-@app.post('/tools/jobs/claim', response_model=ToolJob | None)
+@app.post('/tools/jobs/claim', response_model=ToolJob | None, dependencies=[Depends(require_api_key)])
 async def claim_tool_job(req: ToolJobClaimRequest) -> ToolJob | None:
     return await claim_next_tool_job(req)
 
 
-@app.post('/tools/jobs/{job_id}/heartbeat', response_model=ToolJob)
+@app.post('/tools/jobs/{job_id}/heartbeat', response_model=ToolJob, dependencies=[Depends(require_api_key)])
 async def heartbeat_tool_job_endpoint(job_id: str, req: ToolJobHeartbeatRequest) -> ToolJob:
     job = await heartbeat_tool_job(job_id, req)
     if job is None:

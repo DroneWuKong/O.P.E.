@@ -24,6 +24,13 @@ spec:
               value: ope-core
             - name: OPE_DEFAULT_PROJECT
               value: ope-core
+            - name: OPE_REQUIRE_API_KEY
+              value: "true"
+            - name: OPE_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: ope-api
+                  key: api-keys
             - name: LITELLM_BASE_URL
               value: http://litellm.ope.svc.cluster.local:4000
             - name: LITELLM_API_KEY

@@ -43,12 +43,14 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPE_API_KEYS: ${{ secrets.OPE_API_KEYS }}
         run: |
           : "${POSTGRES_PASSWORD:?set GitHub secret OPE_POSTGRES_PASSWORD}"
           : "${OPENAI_API_KEY:?set GitHub secret OPENAI_API_KEY}"
           : "${ANTHROPIC_API_KEY:?set GitHub secret ANTHROPIC_API_KEY}"
           : "${GEMINI_API_KEY:?set GitHub secret GEMINI_API_KEY}"
           : "${MISTRAL_API_KEY:?set GitHub secret MISTRAL_API_KEY}"
+          : "${OPE_API_KEYS:?set GitHub secret OPE_API_KEYS}"
 
       - name: Namespace and secrets
         env:
@@ -57,6 +59,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPE_API_KEYS: ${{ secrets.OPE_API_KEYS }}
           LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
         run: |
           set -e
@@ -71,6 +74,9 @@ jobs:
             --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
             --from-literal=MISTRAL_API_KEY="$MISTRAL_API_KEY" \
             --from-literal=LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}" \
+            --dry-run=client -o yaml | $KUBECTL apply -f -
+          $KUBECTL -n "$NS" create secret generic ope-api \
+            --from-literal=api-keys="$OPE_API_KEYS" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
 
       - name: Apply data services

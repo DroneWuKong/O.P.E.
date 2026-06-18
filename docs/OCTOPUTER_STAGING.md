@@ -62,9 +62,16 @@ mark jobs `succeeded` or `failed`.
 `k8s/tool-runner.yaml` deploys the runner at `replicas: 0` by default. The
 current runner only executes `noop` jobs and fails non-allowlisted tools.
 
+## API Auth
+
+`ope-core` requires bearer tokens in Octoputer (`OPE_REQUIRE_API_KEY=true`).
+Set GitHub secret `OPE_API_KEYS` to one or more comma-separated API keys. Health
+and readiness probes remain unauthenticated.
+
 ## To-do before real deployment
 
 - Create provider environment values as GitHub Actions secrets, not repo files.
+- Create `OPE_API_KEYS` as a GitHub Actions secret.
 - Create Kubernetes secrets from the workflow at deploy time.
 - Add an ingress or NodePort only after the internal service works.
 - Decide whether O.P.E. should use the existing Octo MinIO for artifacts/log bundles.

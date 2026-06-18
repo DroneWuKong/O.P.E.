@@ -80,6 +80,12 @@ curl -s http://localhost:8080/memory/search \
   -d '{"query":"Octoputer","project":"ope-core"}'
 ```
 
+When `OPE_REQUIRE_API_KEY=true`, send protected API calls with:
+
+```bash
+curl -H "Authorization: Bearer <ope-api-key>" http://localhost:8080/routes
+```
+
 ## API endpoints
 
 - `GET /health`
@@ -152,6 +158,7 @@ input can pin a tag or `sha-*` image.
 Required GitHub secrets:
 
 - `OPE_POSTGRES_PASSWORD`
+- `OPE_API_KEYS`
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
 - `GEMINI_API_KEY`
