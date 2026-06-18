@@ -3,8 +3,8 @@ routes:
     planner_model: mistral-fast
     primary_model: mistral-fast
     fallbacks:
-      - gemini-fast
       - openai-mini
+      - gemini-fast
     search_enabled: false
     verify: false
 

@@ -40,6 +40,8 @@ model_list:
       api_key: os.environ/MISTRAL_API_KEY
 
 router_settings:
+  num_retries: 0
+  timeout: 30
   fallbacks:
     - openai-main:
         - claude-main
@@ -55,9 +57,9 @@ router_settings:
         - openai-coding
         - gemini-main
     - mistral-fast:
-        - gemini-fast
         - openai-mini
+        - gemini-fast
 
 litellm_settings:
-  num_retries: 1
-  request_timeout: 120
+  num_retries: 0
+  request_timeout: 30

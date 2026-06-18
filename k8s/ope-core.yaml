@@ -40,6 +40,8 @@ spec:
                 secretKeyRef:
                   name: ope-api
                   key: api-keys
+            - name: REQUEST_TIMEOUT_SECONDS
+              value: "30"
             - name: LITELLM_BASE_URL
               value: http://litellm.ope.svc.cluster.local:4000
             - name: LITELLM_API_KEY
