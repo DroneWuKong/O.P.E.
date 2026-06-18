@@ -34,7 +34,8 @@ jobs:
           set +e
           $KUBECTL -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
             --image=busybox:1.36 -- \
-            sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local"
+            sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local; nslookup github.com; nslookup api.openai.com; nslookup api.anthropic.com"
+          $KUBECTL -n kube-system get configmap coredns -o yaml || true
           $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
           $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
           exit 0
