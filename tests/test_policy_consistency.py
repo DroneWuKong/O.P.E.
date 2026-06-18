@@ -46,6 +46,13 @@ def test_k8s_litellm_config_matches_policy_file() -> None:
     assert litellm_model_names(k8s_litellm_config) == litellm_model_names(policy_litellm_config)
 
 
+def test_memory_text_index_uses_immutable_expression() -> None:
+    migration = (ROOT / 'migrations/001_initial_schema.sql').read_text(encoding='utf-8')
+
+    assert "to_tsvector('english'::regconfig, summary)" in migration
+    assert 'array_to_string(tags' not in migration
+
+
 def test_build_plan_uses_route_policy() -> None:
     assert build_plan(AskRequest(query='quick lookup please')).primary_model == 'mistral-fast'
     assert build_plan(AskRequest(query='debug this code path')).primary_model == 'claude-coding'

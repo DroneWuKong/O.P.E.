@@ -133,13 +133,13 @@ async def search_memory(req: MemorySearchRequest) -> list[MemoryItem]:
               AND ($3::text IS NULL OR memory_type = $3)
               AND (cardinality($4::text[]) = 0 OR tags && $4)
               AND (
-                to_tsvector('english', summary || ' ' || array_to_string(tags, ' ')) @@ query.tsq
+                to_tsvector('english'::regconfig, summary) @@ query.tsq
                 OR summary ILIKE '%' || $1 || '%'
               )
               AND (expires_at IS NULL OR expires_at > now())
             ORDER BY
               ts_rank_cd(
-                to_tsvector('english', summary || ' ' || array_to_string(tags, ' ')),
+                to_tsvector('english'::regconfig, summary),
                 query.tsq
               ) DESC,
               importance DESC,
