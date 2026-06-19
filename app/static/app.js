@@ -202,7 +202,18 @@ function chatMessageMeta(message) {
 
 function renderChat() {
   if (!state.chatMessages.length) {
-    elements.answer.innerHTML = '<p class="empty chat-empty">Ask something to start.</p>';
+    elements.answer.innerHTML = `
+      <section class="empty-orbit" aria-label="Empty chat">
+        <p class="orbit-kicker">O.P.E. / Octoputer</p>
+        <h3>What's on the workbench today?</h3>
+        <p>Ask plain. Route smart. Keep the signal clean.</p>
+        <div class="orbit-stats" aria-label="Current session state">
+          <span><b>$0</b> message</span>
+          <span><b>${state.sessionTotals.messages.toLocaleString()}</b> session</span>
+          <span><b>${state.sessionTotals.totalTokens.toLocaleString()}</b> tokens</span>
+        </div>
+      </section>
+    `;
     return;
   }
   elements.answer.innerHTML = state.chatMessages.map((message) => {
