@@ -920,6 +920,38 @@ h2 {
   gap: 8px;
 }
 
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 1.2fr;
+  gap: 8px;
+}
+
+.upload-item {
+  display: grid;
+  gap: 7px;
+}
+
+.upload-item strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.upload-item strong span {
+  border: 1px solid var(--signal-line);
+  border-radius: 999px;
+  color: var(--signal);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.62rem;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.upload-item small {
+  color: var(--muted);
+}
+
 .payload-drawer {
   border: 1px solid rgba(121, 132, 118, 0.16);
   border-radius: 8px;
@@ -1255,6 +1287,7 @@ h2 {
   .workspace,
   .form-grid,
   .draft-job-grid,
+  .upload-grid,
   .split-panel {
     grid-template-columns: 1fr;
   }

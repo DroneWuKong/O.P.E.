@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system ope && adduser --system --ingroup ope ope
+RUN groupadd --system --gid 10001 ope \
+    && useradd --system --uid 10001 --gid 10001 --home-dir /nonexistent --shell /usr/sbin/nologin ope
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

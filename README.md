@@ -125,6 +125,14 @@ would choose without calling LiteLLM or writing memory.
 `/events/recent` exposes recent query events for audit/debugging, and
 `/memory/stats` summarizes persisted memory by project, type, and scope.
 
+`/uploads` accepts local-first multipart uploads for receipts, bills, invoices,
+statements, tax records, warranties, home/vehicle paperwork, and other operator
+files. O.P.E. suggests a category from the filename/content type, but the UI can
+override it. Files are stored under
+`$OPE_UPLOAD_ROOT/<project>/<category>/<year>/<month>/`, with sanitized names,
+SHA-256 hashes, and a local JSONL manifest. Octoputer mounts this at
+`/data/ope/uploads` on the `ope-uploads` PVC.
+
 `/connectors` exposes O.P.E.'s connector catalog for GitHub, Google Drive, and
 Gmail without returning secret values. Connector actions are converted into
 reviewed tool jobs through `POST /connectors/{connector_id}/jobs`, so external

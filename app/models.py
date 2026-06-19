@@ -191,6 +191,32 @@ class QueryEventsResponse(BaseModel):
     events: list[QueryEvent] = Field(default_factory=list)
 
 
+class UploadCategorySuggestion(BaseModel):
+    category: str
+    confidence: float = 0.0
+    reason: str = ''
+
+
+class UploadedFileRecord(BaseModel):
+    id: str
+    project: str | None = None
+    original_filename: str
+    stored_filename: str
+    category: str
+    suggested_category: str
+    confidence: float = 0.0
+    content_type: str | None = None
+    size_bytes: int
+    sha256: str
+    relative_path: str
+    description: str | None = None
+    created_at: str
+
+
+class UploadsResponse(BaseModel):
+    uploads: list[UploadedFileRecord] = Field(default_factory=list)
+
+
 class ToolJob(BaseModel):
     id: str
     project: str | None = None

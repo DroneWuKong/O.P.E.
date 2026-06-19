@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import time
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -32,6 +32,9 @@ from app.models import (
     ToolQueueStatsResponse,
     ToolJobStatus,
     ToolJobUpdateRequest,
+    UploadCategorySuggestion,
+    UploadedFileRecord,
+    UploadsResponse,
 )
 from app.approvals import list_approval_rules, tokens_approve_route
 from app.auth import require_api_key
@@ -58,6 +61,7 @@ from app.tools import (
     tool_queue_stats,
     update_tool_job,
 )
+from app.uploads import list_uploads, save_upload, suggest_category
 
 
 logger = logging.getLogger(__name__)
@@ -132,6 +136,7 @@ def root() -> dict:
             'plan': '/plan',
             'ask': '/ask',
             'connectors': '/connectors',
+            'uploads': '/uploads',
             'memory_search': '/memory/search',
             'tool_queue_stats': '/tools/queue/stats',
         },
@@ -391,6 +396,44 @@ async def recent_events(
     return QueryEventsResponse(
         events=await list_query_events(project=project, success=success, limit=limit)
     )
+
+
+@app.get('/uploads/suggest', response_model=UploadCategorySuggestion, dependencies=[Depends(require_api_key)])
+def upload_category_suggestion(
+    filename: str,
+    content_type: str | None = None,
+) -> UploadCategorySuggestion:
+    return suggest_category(filename, content_type)
+
+
+@app.post('/uploads', response_model=UploadedFileRecord, dependencies=[Depends(require_api_key)])
+async def upload_file(
+    file: UploadFile = File(...),
+    project: str | None = Form(None),
+    category: str | None = Form(None),
+    description: str | None = Form(None),
+) -> UploadedFileRecord:
+    try:
+        data = await file.read()
+        return save_upload(
+            filename=file.filename or 'upload.bin',
+            content_type=file.content_type,
+            data=data,
+            project=project,
+            category=category,
+            description=description,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={'error': 'upload_rejected', 'message': str(exc)}) from exc
+
+
+@app.get('/uploads', response_model=UploadsResponse, dependencies=[Depends(require_api_key)])
+def recent_uploads(
+    project: str | None = None,
+    category: str | None = None,
+    limit: int = Query(25, ge=1, le=100),
+) -> UploadsResponse:
+    return UploadsResponse(uploads=list_uploads(project=project, category=category, limit=limit))
 
 
 @app.post('/tools/jobs', response_model=ToolJob, dependencies=[Depends(require_api_key)])

@@ -7,7 +7,7 @@ os.environ['OPE_DISABLE_EVENT_LOGGING'] = 'true'
 
 from fastapi.testclient import TestClient
 
-from app import main
+from app import main, uploads
 from app.models import MemoryItem, MemoryStatsResponse, QueryEvent, ToolJob, ToolQueueStatsResponse
 
 
@@ -41,6 +41,8 @@ def test_ui_index() -> None:
     assert 'Approval Inbox' in response.text
     assert 'approvalsPanel' in response.text
     assert 'approvalStatsPanel' in response.text
+    assert 'Local Files' in response.text
+    assert 'uploadForm' in response.text
     assert 'Queue Local Draft' in response.text
     assert 'draftJobForm' in response.text
 
@@ -293,6 +295,43 @@ def test_memory_stats(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()['total'] == 3
     assert response.json()['by_project']['ope-core'] == 2
+
+
+def test_upload_suggest_endpoint() -> None:
+    response = client.get('/uploads/suggest?filename=home-depot-receipt.pdf&content_type=application/pdf')
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['category'] == 'receipts'
+    assert body['confidence'] > 0.5
+
+
+def test_upload_file_and_list(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        uploads,
+        'get_settings',
+        lambda: SimpleNamespace(
+            ope_upload_root=str(tmp_path),
+            ope_upload_max_bytes=1024 * 1024,
+            ope_default_project='ope-core',
+        ),
+    )
+
+    upload_response = client.post(
+        '/uploads',
+        data={'project': 'ope-core', 'category': 'bills', 'description': 'ComEd June bill'},
+        files={'file': ('comed-bill.pdf', b'bill bytes', 'application/pdf')},
+    )
+    list_response = client.get('/uploads?project=ope-core&limit=5')
+
+    assert upload_response.status_code == 200
+    body = upload_response.json()
+    assert body['category'] == 'bills'
+    assert body['description'] == 'ComEd June bill'
+    assert body['relative_path'].startswith('ope-core/bills/')
+    assert (tmp_path / body['relative_path']).exists()
+    assert list_response.status_code == 200
+    assert list_response.json()['uploads'][0]['id'] == body['id']
 
 
 def test_recent_events(monkeypatch) -> None:

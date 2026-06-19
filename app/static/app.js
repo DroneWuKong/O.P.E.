@@ -97,6 +97,12 @@ const elements = {
   models: $('modelsPanel'),
   events: $('eventsPanel'),
   memory: $('memoryPanel'),
+  uploads: $('uploadsPanel'),
+  uploadForm: $('uploadForm'),
+  uploadFile: $('uploadFileInput'),
+  uploadCategory: $('uploadCategoryInput'),
+  uploadDescription: $('uploadDescriptionInput'),
+  uploadSuggestion: $('uploadSuggestionText'),
   connectors: $('connectorsPanel'),
   toolsPanel: $('toolsPanel'),
   draftJobForm: $('draftJobForm'),
@@ -233,6 +239,33 @@ async function api(path, options = {}) {
       ...authHeaders(),
       ...(options.headers || {}),
     },
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    const message = data?.detail?.message || data?.detail?.error || data?.detail || response.statusText;
+    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+  }
+  return data;
+}
+
+async function apiForm(path, formData, options = {}) {
+  if (!hasApiKey()) {
+    throw new Error('Enter your OPE API key first.');
+  }
+  const key = normalizedApiKey();
+  const headers = {};
+  if (key) headers.Authorization = `Bearer ${key}`;
+  persistApiKey();
+  localStorage.setItem('ope.project', elements.project.value.trim() || 'ope-core');
+  const response = await fetch(path, {
+    ...options,
+    method: options.method || 'POST',
+    headers: {
+      ...headers,
+      ...(options.headers || {}),
+    },
+    body: formData,
   });
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
@@ -877,6 +910,79 @@ async function writeMemory(event) {
   }
 }
 
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function suggestUploadCategory() {
+  const file = elements.uploadFile.files?.[0];
+  if (!file || !hasApiKey()) {
+    elements.uploadSuggestion.textContent = 'Pick a file and O.P.E. will suggest where it belongs.';
+    return;
+  }
+  try {
+    const data = await api(
+      `/uploads/suggest?filename=${encodeURIComponent(file.name)}&content_type=${encodeURIComponent(file.type || '')}`
+    );
+    elements.uploadSuggestion.textContent = `Suggestion: ${data.category} (${Math.round((data.confidence || 0) * 100)}%)`;
+    if (!elements.uploadCategory.value && data.confidence >= 0.75) {
+      elements.uploadCategory.value = data.category;
+    }
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+  }
+}
+
+async function uploadLocalFile(event) {
+  event.preventDefault();
+  if (!requireApiKey(elements.uploads)) return;
+  const file = elements.uploadFile.files?.[0];
+  if (!file) {
+    elements.uploadSuggestion.textContent = 'Choose a file first.';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('project', elements.project.value.trim() || 'ope-core');
+  if (elements.uploadCategory.value) formData.append('category', elements.uploadCategory.value);
+  if (elements.uploadDescription.value.trim()) formData.append('description', elements.uploadDescription.value.trim());
+  try {
+    setBusy('Uploading');
+    const upload = await apiForm('/uploads', formData);
+    elements.uploadSuggestion.textContent = `Saved to ${upload.relative_path}`;
+    elements.uploadFile.value = '';
+    elements.uploadDescription.value = '';
+    elements.uploadCategory.value = '';
+    await loadUploads();
+    setBusy('Uploaded');
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+    setBusy('Failed');
+  }
+}
+
+async function loadUploads() {
+  if (!requireApiKey(elements.uploads)) return;
+  try {
+    const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
+    const data = await api(`/uploads?project=${project}&limit=20`);
+    const uploads = data.uploads || [];
+    elements.uploads.innerHTML = uploads.map((upload) => `
+      <div class="row-item upload-item">
+        <strong>${escapeHtml(upload.original_filename)} <span>${escapeHtml(upload.category)}</span></strong>
+        <span>${escapeHtml(upload.relative_path)} / ${escapeHtml(formatBytes(upload.size_bytes))}</span>
+        <small>${escapeHtml(upload.description || `suggested ${upload.suggested_category} (${Math.round((upload.confidence || 0) * 100)}%)`)}</small>
+      </div>
+    `).join('');
+    if (!uploads.length) renderEmpty(elements.uploads, 'No uploads yet.');
+  } catch (error) {
+    renderEmpty(elements.uploads, error.message);
+  }
+}
+
 async function loadTools() {
   if (!requireApiKey(elements.toolsPanel)) return;
   try {
@@ -1239,11 +1345,12 @@ async function refreshAll() {
     renderEmpty(elements.models, 'Enter your OPE API key to load models.');
     renderEmpty(elements.events, 'Enter your OPE API key to load events.');
     renderEmpty(elements.approvals, 'Enter your OPE API key to load approvals.');
+    renderEmpty(elements.uploads, 'Enter your OPE API key to load uploads.');
     renderEmpty(elements.connectors, 'Enter your OPE API key to load connectors.');
     renderEmpty(elements.toolsPanel, 'Enter your OPE API key to load tools.');
     return;
   }
-  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadApprovals(), loadConnectors(), loadTools()]);
+  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadApprovals(), loadUploads(), loadConnectors(), loadTools()]);
 }
 
 function autosizeComposer() {
@@ -1278,6 +1385,9 @@ $('connectorsButton').addEventListener('click', loadConnectors);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
+elements.uploadForm.addEventListener('submit', uploadLocalFile);
+elements.uploadFile.addEventListener('change', suggestUploadCategory);
+$('uploadsButton').addEventListener('click', loadUploads);
 elements.draftJobForm.addEventListener('submit', queueDraftJob);
 $('draftExampleButton').addEventListener('click', fillDraftExample);
 $('resetCostButton').addEventListener('click', resetSessionCost);

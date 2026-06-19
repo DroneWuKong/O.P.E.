@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     gmail_access_token: str | None = None
     google_api_base_url: str = 'https://www.googleapis.com'
 
+    ope_upload_root: str = '/tmp/ope-uploads'
+    ope_upload_max_bytes: int = 25 * 1024 * 1024
+
 
 @lru_cache
 def get_settings() -> Settings:

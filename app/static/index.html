@@ -173,6 +173,7 @@
           <button class="tab-button active" type="button" data-tab="events">Events</button>
           <button class="tab-button" type="button" data-tab="approvals">Approvals</button>
           <button class="tab-button" type="button" data-tab="memory">Memory</button>
+          <button class="tab-button" type="button" data-tab="files">Files</button>
           <button class="tab-button" type="button" data-tab="connectors">Connectors</button>
           <button class="tab-button" type="button" data-tab="tools">Tools</button>
         </div>
@@ -269,6 +270,48 @@
             <p id="draftJobStatus" class="empty">No draft queued yet.</p>
           </form>
           <div id="connectorsPanel" class="data-table"></div>
+        </div>
+
+        <div class="tab-panel" id="filesTab">
+          <div class="panel-head">
+            <h2>Local Files</h2>
+            <button class="mini-button" id="uploadsButton" type="button">Refresh</button>
+          </div>
+          <form id="uploadForm" class="panel-form upload-form">
+            <div class="upload-grid">
+              <label class="field">
+                <span>File</span>
+                <input id="uploadFileInput" type="file" />
+              </label>
+              <label class="field">
+                <span>What is it?</span>
+                <select id="uploadCategoryInput">
+                  <option value="">Auto sort</option>
+                  <option value="receipts">Receipt</option>
+                  <option value="bills">Bill</option>
+                  <option value="invoices">Invoice</option>
+                  <option value="statements">Statement</option>
+                  <option value="taxes">Tax</option>
+                  <option value="medical">Medical</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="warranties">Warranty</option>
+                  <option value="home">Home</option>
+                  <option value="vehicle">Vehicle</option>
+                  <option value="banking">Banking</option>
+                  <option value="inbox">Inbox / not sure</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Note</span>
+                <input id="uploadDescriptionInput" type="text" placeholder="Optional note..." />
+              </label>
+            </div>
+            <div class="draft-job-actions">
+              <button class="secondary-button" type="submit">Upload</button>
+              <span id="uploadSuggestionText" class="empty">Pick a file and O.P.E. will suggest where it belongs.</span>
+            </div>
+          </form>
+          <div id="uploadsPanel" class="data-table"></div>
         </div>
 
         <div class="tab-panel" id="toolsTab">
