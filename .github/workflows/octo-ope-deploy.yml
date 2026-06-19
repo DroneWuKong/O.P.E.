@@ -63,6 +63,9 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           OPE_API_KEYS: ${{ secrets.OPE_API_KEYS }}
           LITELLM_MASTER_KEY: ${{ secrets.LITELLM_MASTER_KEY }}
+          GITHUB_TOKEN: ${{ secrets.OPE_GITHUB_TOKEN }}
+          GOOGLE_ACCESS_TOKEN: ${{ secrets.GOOGLE_ACCESS_TOKEN }}
+          GMAIL_ACCESS_TOKEN: ${{ secrets.GMAIL_ACCESS_TOKEN }}
         run: |
           set -e
           clean_secret() {
@@ -78,6 +81,9 @@ jobs:
           GEMINI_API_KEY_CLEAN="$(clean_secret GEMINI_API_KEY)"
           MISTRAL_API_KEY_CLEAN="$(clean_secret MISTRAL_API_KEY)"
           LITELLM_MASTER_KEY_CLEAN="$(clean_secret LITELLM_MASTER_KEY)"
+          GITHUB_TOKEN_CLEAN="$(clean_secret GITHUB_TOKEN)"
+          GOOGLE_ACCESS_TOKEN_CLEAN="$(clean_secret GOOGLE_ACCESS_TOKEN)"
+          GMAIL_ACCESS_TOKEN_CLEAN="$(clean_secret GMAIL_ACCESS_TOKEN)"
           OPE_API_KEYS_CLEAN="$(clean_secret OPE_API_KEYS)"
           POSTGRES_DSN="$(POSTGRES_PASSWORD="$POSTGRES_PASSWORD" NS="$NS" python3 - <<'PY'
           import os
@@ -99,6 +105,9 @@ jobs:
             --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY_CLEAN" \
             --from-literal=MISTRAL_API_KEY="$MISTRAL_API_KEY_CLEAN" \
             --from-literal=LITELLM_MASTER_KEY="$LITELLM_MASTER_KEY_CLEAN" \
+            --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN_CLEAN" \
+            --from-literal=GOOGLE_ACCESS_TOKEN="$GOOGLE_ACCESS_TOKEN_CLEAN" \
+            --from-literal=GMAIL_ACCESS_TOKEN="$GMAIL_ACCESS_TOKEN_CLEAN" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           $KUBECTL -n "$NS" create secret generic ope-api \
             --from-literal=api-keys="$OPE_API_KEYS_CLEAN" \

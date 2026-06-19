@@ -132,6 +132,17 @@ service access still flows through the approval queue. Gmail is disabled by
 default; enable it only after Google OAuth is configured and you are comfortable
 with mailbox scopes.
 
+The connector worker currently allowlists read-only actions:
+
+- GitHub: `search_repos`, `read_file`
+- Google Drive: `search_files`, `read_document`
+- Gmail: `search_mail`, `read_thread` only when `GMAIL_ENABLED=true`
+
+Write/send actions remain cataloged for planning but are not executable by the
+worker yet. Configure `OPE_GITHUB_TOKEN`, `GOOGLE_ACCESS_TOKEN`, or
+`GMAIL_ACCESS_TOKEN` as GitHub secrets before deploying if you want these actions
+to run on Octoputer.
+
 Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
 classified without approval, but `/ask` rejects it until the request includes the
 matching approval token, currently `tool_action_approved`.
@@ -144,9 +155,11 @@ with heartbeat calls.
 `/tools/queue/stats` summarizes backlog, running jobs, expired leases, and the
 oldest waiting jobs for operator dashboards or deployment smoke checks.
 
-The included `app.tool_runner` process is intentionally narrow: it only executes
-`noop` jobs, marks all other tools failed, and ships as a zero-replica Kubernetes
-deployment until an operator explicitly scales it.
+The included `app.tool_runner` process is intentionally narrow: it executes
+`noop` jobs and approved allowlisted connector jobs, then marks all other tools
+failed. The Kubernetes deployment runs one replica by default so approved
+connector jobs can complete, but the worker still cannot execute shell commands
+or arbitrary tools.
 
 ## Smoke tests
 
@@ -191,9 +204,8 @@ Required GitHub secrets:
 - `GEMINI_API_KEY`
 - `MISTRAL_API_KEY`
 - `LITELLM_MASTER_KEY` optional
-- connector secrets as needed: `GITHUB_TOKEN` or GitHub App credentials,
-  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and optionally
-  `GOOGLE_SERVICE_ACCOUNT_JSON`
+- connector secrets as needed: `OPE_GITHUB_TOKEN`, `GOOGLE_ACCESS_TOKEN`, and
+  optionally `GMAIL_ACCESS_TOKEN`
 
 For manual kubectl testing only, copy `k8s/secrets.example.yaml` outside the
 repo, replace every placeholder, and apply that private copy.

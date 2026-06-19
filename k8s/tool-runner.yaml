@@ -4,7 +4,7 @@ metadata:
   name: ope-tool-runner
   namespace: ope
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: ope-tool-runner
@@ -41,6 +41,28 @@ spec:
                 secretKeyRef:
                   name: ope-db
                   key: postgres-dsn
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ope-provider-env
+                  key: GITHUB_TOKEN
+                  optional: true
+            - name: GOOGLE_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ope-provider-env
+                  key: GOOGLE_ACCESS_TOKEN
+                  optional: true
+            - name: GMAIL_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ope-provider-env
+                  key: GMAIL_ACCESS_TOKEN
+                  optional: true
+            - name: GOOGLE_DRIVE_ENABLED
+              value: "true"
+            - name: GMAIL_ENABLED
+              value: "false"
           resources:
             requests:
               cpu: 50m

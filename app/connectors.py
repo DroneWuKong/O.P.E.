@@ -17,7 +17,20 @@ def _github_configured() -> bool:
 
 def _google_oauth_configured() -> bool:
     settings = get_settings()
-    return _has_value(settings.google_oauth_client_id) and _has_value(settings.google_oauth_client_secret)
+    return (
+        _has_value(settings.google_access_token)
+        or _has_value(settings.google_oauth_client_id) and _has_value(settings.google_oauth_client_secret)
+    )
+
+
+def _google_api_token_configured() -> bool:
+    settings = get_settings()
+    return _has_value(settings.google_access_token)
+
+
+def _gmail_api_token_configured() -> bool:
+    settings = get_settings()
+    return _has_value(settings.gmail_access_token) or _has_value(settings.google_access_token)
 
 
 def _google_service_account_configured() -> bool:
@@ -27,7 +40,8 @@ def _google_service_account_configured() -> bool:
 
 def list_connectors() -> list[ConnectorSpec]:
     settings = get_settings()
-    google_auth_ready = _google_oauth_configured() or _google_service_account_configured()
+    google_auth_ready = _google_api_token_configured()
+    gmail_auth_ready = _gmail_api_token_configured()
 
     return [
         ConnectorSpec(
@@ -62,23 +76,22 @@ def list_connectors() -> list[ConnectorSpec]:
                 ConnectorAction(name='write_document', description='Update an approved Google Doc.', read_only=False),
                 ConnectorAction(name='write_sheet', description='Update an approved Google Sheet.', read_only=False),
             ],
-            notes='OAuth is best for user files; service accounts work for files explicitly shared with the service account.',
+            notes='OAuth access tokens are executable now; service accounts are tracked for the next auth-worker slice.',
         ),
         ConnectorSpec(
             id='gmail',
             name='Gmail',
             provider='google.com',
-            status='disabled' if not settings.gmail_enabled else 'configured' if google_auth_ready else 'needs_auth',
+            status='disabled' if not settings.gmail_enabled else 'configured' if gmail_auth_ready else 'needs_auth',
             auth_type='oauth',
-            auth_configured=google_auth_ready and settings.gmail_enabled,
+            auth_configured=gmail_auth_ready and settings.gmail_enabled,
             scopes=['gmail.readonly', 'gmail.compose', 'gmail.send'],
             actions=[
                 ConnectorAction(name='search_mail', description='Search authorized mailbox messages.'),
                 ConnectorAction(name='read_thread', description='Read an authorized mail thread.'),
                 ConnectorAction(name='draft_reply', description='Draft a reply for operator review.', read_only=False),
-                ConnectorAction(name='send_message', description='Send an approved message.', read_only=False),
             ],
-            notes='Disabled by default because mailbox access is sensitive. Enable with GMAIL_ENABLED=true after OAuth is configured.',
+            notes='Disabled by default because mailbox access is sensitive. Sending mail is intentionally not allowlisted yet.',
         ),
     ]
 

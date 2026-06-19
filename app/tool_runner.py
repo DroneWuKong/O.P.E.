@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 from app.config import get_settings
+from app.connector_runner import execute_connector_tool
 from app.memory import close_memory_store, init_memory_store
 from app.models import ToolJob, ToolJobClaimRequest, ToolJobHeartbeatRequest
 from app.tools import claim_next_tool_job, finish_claimed_tool_job, heartbeat_tool_job
@@ -13,14 +14,16 @@ logger = logging.getLogger('ope.tool_runner')
 
 
 def execute_allowlisted_tool(job: ToolJob) -> dict:
-    if job.tool_name != 'noop':
-        raise ValueError(f'tool is not allowlisted: {job.tool_name}')
-    return {
-        'ok': True,
-        'tool_name': job.tool_name,
-        'action': job.action,
-        'payload': job.payload,
-    }
+    if job.tool_name == 'noop':
+        return {
+            'ok': True,
+            'tool_name': job.tool_name,
+            'action': job.action,
+            'payload': job.payload,
+        }
+    if job.tool_name.startswith('connector:'):
+        return execute_connector_tool(job)
+    raise ValueError(f'tool is not allowlisted: {job.tool_name}')
 
 
 async def run_once() -> bool:

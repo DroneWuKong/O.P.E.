@@ -36,12 +36,16 @@ class Settings(BaseSettings):
     github_token: str | None = None
     github_app_id: str | None = None
     github_app_private_key: str | None = None
+    github_api_base_url: str = 'https://api.github.com'
 
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: str | None = None
+    google_access_token: str | None = None
     google_service_account_json: str | None = None
     google_drive_enabled: bool = True
     gmail_enabled: bool = False
+    gmail_access_token: str | None = None
+    google_api_base_url: str = 'https://www.googleapis.com'
 
 
 @lru_cache
