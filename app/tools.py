@@ -154,8 +154,14 @@ async def update_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob | N
             SET
               status = coalesce($2, status),
               approved_by = coalesce($3, approved_by),
-              result = coalesce($4::jsonb, result),
-              error = coalesce($5, error),
+              result = CASE
+                WHEN $6 THEN NULL
+                ELSE coalesce($4::jsonb, result)
+              END,
+              error = CASE
+                WHEN $7 THEN NULL
+                ELSE coalesce($5, error)
+              END,
               worker_id = CASE
                 WHEN $2 IN ('succeeded', 'failed', 'cancelled') THEN NULL
                 ELSE worker_id
@@ -175,6 +181,8 @@ async def update_tool_job(job_id: str, req: ToolJobUpdateRequest) -> ToolJob | N
             req.approved_by,
             json.dumps(req.result) if req.result is not None else None,
             req.error,
+            req.clear_result,
+            req.clear_error,
         )
 
     return _row_to_tool_job(row) if row else None

@@ -158,10 +158,12 @@ matching approval token, currently `tool_action_approved`.
 Approved tool-action asks create a `pending_review` tool job. Connector jobs can
 also be queued directly through the Connectors tab or
 `POST /connectors/{connector_id}/jobs`; they enter the Approval Inbox as
-`pending_review` and do not run until an operator approves them. Tool jobs are
-auditable queue records only; O.P.E. does not execute commands yet. Workers can
-atomically claim approved jobs with a lease and refresh that lease with heartbeat
-calls.
+`pending_review` and do not run until an operator approves them. The Approval
+Inbox shows queue counts, supports approve/reject/retry, and renders local draft
+results in a copyable format. Retry resets stale result/error fields before
+returning a job to the approved queue. Tool jobs are auditable queue records
+only; O.P.E. does not execute commands yet. Workers can atomically claim approved
+jobs with a lease and refresh that lease with heartbeat calls.
 
 `/tools/queue/stats` summarizes backlog, running jobs, expired leases, and the
 oldest waiting jobs for operator dashboards or deployment smoke checks.

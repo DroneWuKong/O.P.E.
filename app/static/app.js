@@ -91,6 +91,7 @@ const elements = {
   health: $('healthStatus'),
   ready: $('readyStatus'),
   sessions: $('sessionPanel'),
+  approvalStats: $('approvalStatsPanel'),
   approvals: $('approvalsPanel'),
   routes: $('routePanel'),
   models: $('modelsPanel'),
@@ -112,6 +113,8 @@ const elements = {
 };
 
 let approvalFilter = 'pending';
+let approvalJobsById = new Map();
+let approvalPollTimer = null;
 
 const draftActionSpecs = {
   'github:draft_issue': {
@@ -934,6 +937,44 @@ function jobResultText(job = {}) {
   return compactJson(job.result, 900);
 }
 
+function draftFromJob(job = {}) {
+  return job.result?.result?.draft || job.result?.draft || null;
+}
+
+function renderQueueStats(stats = {}) {
+  const byStatus = stats.by_status || {};
+  const cells = [
+    ['Pending', byStatus.pending_review || 0],
+    ['Approved', byStatus.approved || 0],
+    ['Running', stats.running || byStatus.running || 0],
+    ['Done', byStatus.succeeded || 0],
+    ['Failed', (byStatus.failed || 0) + (byStatus.cancelled || 0)],
+  ];
+  elements.approvalStats.innerHTML = cells.map(([label, value]) => `
+    <div>
+      <strong>${escapeHtml(value)}</strong>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `).join('');
+}
+
+function renderDraftResult(draft = {}) {
+  const title = draft.title || draft.subject || 'Untitled draft';
+  const target = compactJson(draft.target || {}, 220);
+  const nextSteps = Array.isArray(draft.next_steps) ? draft.next_steps : [];
+  return `
+    <div class="draft-result">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(draft.connector || 'connector')} / ${escapeHtml(draft.draft_type || 'draft')} / external side effect: false</small>
+      <label>Target</label>
+      <pre>${escapeHtml(target)}</pre>
+      <label>Body</label>
+      <pre>${escapeHtml(draft.body || '')}</pre>
+      ${nextSteps.length ? `<label>Next</label><ul>${nextSteps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ul>` : ''}
+    </div>
+  `;
+}
+
 function renderApprovalActions(job = {}) {
   const buttons = [];
   if (job.status === 'pending_review') {
@@ -943,6 +984,9 @@ function renderApprovalActions(job = {}) {
   if (job.status === 'failed' || job.status === 'cancelled') {
     buttons.push(`<button class="mini-button" type="button" data-retry-job="${escapeHtml(job.id)}">Retry</button>`);
   }
+  if (draftFromJob(job)) {
+    buttons.push(`<button class="mini-button" type="button" data-copy-draft="${escapeHtml(job.id)}">Copy draft</button>`);
+  }
   if (job.result || job.error) {
     buttons.push(`<button class="mini-button" type="button" data-copy-job="${escapeHtml(job.id)}">Copy result</button>`);
   }
@@ -950,12 +994,14 @@ function renderApprovalActions(job = {}) {
 }
 
 function renderApprovalJobs(jobs = []) {
+  approvalJobsById = new Map(jobs.map((job) => [job.id, job]));
   if (!jobs.length) {
     renderEmpty(elements.approvals, 'No jobs in this lane.');
     return;
   }
   elements.approvals.innerHTML = jobs.map((job) => {
     const resultText = jobResultText(job);
+    const draft = draftFromJob(job);
     return `
       <details class="approval-item ${escapeHtml(job.status)}" data-job-row="${escapeHtml(job.id)}">
         <summary>
@@ -968,7 +1014,8 @@ function renderApprovalJobs(jobs = []) {
         <div class="approval-body">
           <label>Payload</label>
           <pre>${escapeHtml(compactJson(job.payload))}</pre>
-          ${resultText ? `<label>${job.error ? 'Error' : 'Result'}</label><pre>${escapeHtml(resultText)}</pre>` : ''}
+          ${draft ? renderDraftResult(draft) : ''}
+          ${resultText && !draft ? `<label>${job.error ? 'Error' : 'Result'}</label><pre>${escapeHtml(resultText)}</pre>` : ''}
         </div>
       </details>
     `;
@@ -979,9 +1026,11 @@ async function loadApprovals() {
   if (!requireApiKey(elements.approvals)) return;
   try {
     const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
-    const responses = await Promise.all(
-      approvalStatuses().map((status) => api(`/tools/jobs?project=${project}&status=${status}&limit=25`))
-    );
+    const [stats, responses] = await Promise.all([
+      api(`/tools/queue/stats?project=${project}`),
+      Promise.all(approvalStatuses().map((status) => api(`/tools/jobs?project=${project}&status=${status}&limit=25`))),
+    ]);
+    renderQueueStats(stats);
     const jobs = responses.flatMap((data) => data.jobs || [])
       .filter((job) => String(job.tool_name || '').startsWith('connector:'))
       .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
@@ -1000,10 +1049,20 @@ async function patchJob(jobId, body, busyLabel) {
     });
     await Promise.allSettled([loadApprovals(), loadTools()]);
     setBusy('Ready');
+    return true;
   } catch (error) {
     setBusy('Failed');
     renderEmpty(elements.approvals, error.message);
+    return false;
   }
+}
+
+function watchApprovals() {
+  window.clearTimeout(approvalPollTimer);
+  approvalPollTimer = window.setTimeout(() => {
+    loadApprovals();
+    approvalPollTimer = window.setTimeout(loadApprovals, 2500);
+  }, 900);
 }
 
 function setApprovalFilter(nextFilter) {
@@ -1015,9 +1074,20 @@ function setApprovalFilter(nextFilter) {
 }
 
 async function copyJobResult(jobId) {
-  const row = [...elements.approvals.querySelectorAll('[data-job-row]')]
-    .find((item) => item.dataset.jobRow === jobId);
-  const text = row?.innerText || '';
+  const job = approvalJobsById.get(jobId);
+  const text = job ? compactJson(job.result || { error: job.error }, 2000) : '';
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    setBusy('Copied');
+  } catch (error) {
+    setBusy('Copy failed');
+  }
+}
+
+async function copyDraftBody(jobId) {
+  const draft = draftFromJob(approvalJobsById.get(jobId));
+  const text = draft ? [draft.title || draft.subject, draft.body].filter(Boolean).join('\n\n') : '';
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
@@ -1161,6 +1231,7 @@ async function refreshAll() {
     populateRouteOptions();
     elements.modelSummary.textContent = 'Models: key needed';
     elements.modelSummary.className = 'watch';
+    elements.approvalStats.innerHTML = '';
     renderEmpty(elements.routes, 'Enter your OPE API key to load routes.');
     renderEmpty(elements.models, 'Enter your OPE API key to load models.');
     renderEmpty(elements.events, 'Enter your OPE API key to load events.');
@@ -1220,10 +1291,16 @@ elements.approvals.addEventListener('click', (event) => {
   const approveButton = event.target.closest('[data-approve-job]');
   const rejectButton = event.target.closest('[data-reject-job]');
   const retryButton = event.target.closest('[data-retry-job]');
+  const copyDraftButton = event.target.closest('[data-copy-draft]');
   const copyButton = event.target.closest('[data-copy-job]');
   if (approveButton) {
     event.preventDefault();
-    patchJob(approveButton.dataset.approveJob, { status: 'approved', approved_by: 'operator' }, 'Approved');
+    patchJob(approveButton.dataset.approveJob, { status: 'approved', approved_by: 'operator' }, 'Approved')
+      .then((ok) => {
+        if (!ok) return;
+        setApprovalFilter('running');
+        watchApprovals();
+      });
   }
   if (rejectButton) {
     event.preventDefault();
@@ -1231,7 +1308,19 @@ elements.approvals.addEventListener('click', (event) => {
   }
   if (retryButton) {
     event.preventDefault();
-    patchJob(retryButton.dataset.retryJob, { status: 'approved', approved_by: 'operator', error: '' }, 'Retrying');
+    patchJob(
+      retryButton.dataset.retryJob,
+      { status: 'approved', approved_by: 'operator', clear_result: true, clear_error: true },
+      'Retrying'
+    ).then((ok) => {
+      if (!ok) return;
+      setApprovalFilter('running');
+      watchApprovals();
+    });
+  }
+  if (copyDraftButton) {
+    event.preventDefault();
+    copyDraftBody(copyDraftButton.dataset.copyDraft);
   }
   if (copyButton) {
     event.preventDefault();

@@ -40,6 +40,7 @@ def test_ui_index() -> None:
     assert 'Connectors' in response.text
     assert 'Approval Inbox' in response.text
     assert 'approvalsPanel' in response.text
+    assert 'approvalStatsPanel' in response.text
     assert 'Queue Local Draft' in response.text
     assert 'draftJobForm' in response.text
 
@@ -341,8 +342,11 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
         assert limit == 5
         return [job]
 
+    update_requests = []
+
     async def fake_update(job_id, req):
         assert job_id == 'job-1'
+        update_requests.append(req)
         return job.model_copy(update={'status': req.status, 'approved_by': req.approved_by})
 
     monkeypatch.setattr(main, 'create_tool_job', fake_create)
@@ -362,6 +366,10 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     list_response = client.get('/tools/jobs?project=ope-core&status=pending_review&limit=5')
     update_response = client.patch('/tools/jobs/job-1', json={'status': 'approved', 'approved_by': 'operator'})
     reject_response = client.patch('/tools/jobs/job-1', json={'status': 'cancelled', 'approved_by': 'operator'})
+    retry_response = client.patch(
+        '/tools/jobs/job-1',
+        json={'status': 'approved', 'approved_by': 'operator', 'clear_result': True, 'clear_error': True},
+    )
 
     assert create_response.status_code == 200
     assert create_response.json()['id'] == 'job-1'
@@ -371,6 +379,9 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     assert update_response.json()['status'] == 'approved'
     assert reject_response.status_code == 200
     assert reject_response.json()['status'] == 'cancelled'
+    assert retry_response.status_code == 200
+    assert update_requests[-1].clear_result is True
+    assert update_requests[-1].clear_error is True
 
 
 def test_tool_queue_stats(monkeypatch) -> None:

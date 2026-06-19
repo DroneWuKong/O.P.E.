@@ -224,6 +224,8 @@ class ToolJobUpdateRequest(BaseModel):
     approved_by: str | None = None
     result: dict[str, Any] | None = None
     error: str | None = None
+    clear_result: bool = False
+    clear_error: bool = False
 
 
 class ToolJobsResponse(BaseModel):
