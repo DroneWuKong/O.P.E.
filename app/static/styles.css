@@ -778,6 +778,54 @@ h2 {
   width: calc(100% - 28px);
 }
 
+.session-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+
+.session-stack {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+.session-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid rgba(121, 132, 118, 0.16);
+  border-radius: 8px;
+  background: rgba(5, 8, 6, 0.7);
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+}
+
+.session-item.active {
+  border-color: var(--signal-line);
+  background:
+    linear-gradient(180deg, rgba(36, 211, 107, 0.12), rgba(5, 8, 6, 0.74)),
+    rgba(5, 8, 6, 0.84);
+}
+
+.session-title {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-meta {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .route-stack,
 .status-list,
 .data-table {

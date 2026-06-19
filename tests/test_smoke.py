@@ -34,6 +34,9 @@ def test_ui_index() -> None:
     assert 'What can you do?' in response.text
     assert 'Retry Last' in response.text
     assert 'Export' in response.text
+    assert 'Chats' in response.text
+    assert 'New chat' in response.text
+    assert 'sessionPanel' in response.text
 
 
 def test_health() -> None:

@@ -1,15 +1,61 @@
-const state = {
-  apiKey: localStorage.getItem('ope.apiKey') || '',
-  project: localStorage.getItem('ope.project') || 'ope-core',
-  mode: localStorage.getItem('ope.mode') || 'auto',
-  sessionTotals: JSON.parse(sessionStorage.getItem('ope.sessionTotals') || 'null') || {
+function defaultTotals() {
+  return {
     messages: 0,
     inputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,
     costUsd: 0,
-  },
-  chatMessages: JSON.parse(sessionStorage.getItem('ope.chatMessages') || '[]'),
+  };
+}
+
+function parseStorage(store, key, fallback) {
+  try {
+    const raw = store.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function normalizeSession(session = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: session.id || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: session.title || 'New chat',
+    createdAt: session.createdAt || now,
+    updatedAt: session.updatedAt || session.createdAt || now,
+    messages: Array.isArray(session.messages) ? session.messages : [],
+    totals: { ...defaultTotals(), ...(session.totals || {}) },
+  };
+}
+
+function loadChatSessions() {
+  const stored = parseStorage(localStorage, 'ope.chatSessions', []);
+  if (Array.isArray(stored) && stored.length) {
+    return stored.map(normalizeSession);
+  }
+
+  return [
+    normalizeSession({
+      title: 'New chat',
+      messages: parseStorage(sessionStorage, 'ope.chatMessages', []),
+      totals: parseStorage(sessionStorage, 'ope.sessionTotals', defaultTotals()),
+    }),
+  ];
+}
+
+const initialSessions = loadChatSessions();
+const preferredSessionId = localStorage.getItem('ope.activeSessionId');
+const initialActiveSession = initialSessions.find((session) => session.id === preferredSessionId) || initialSessions[0];
+
+const state = {
+  apiKey: localStorage.getItem('ope.apiKey') || '',
+  project: localStorage.getItem('ope.project') || 'ope-core',
+  mode: localStorage.getItem('ope.mode') || 'auto',
+  activeSessionId: initialActiveSession.id,
+  chatSessions: initialSessions,
+  sessionTotals: initialActiveSession.totals,
+  chatMessages: initialActiveSession.messages,
 };
 
 const defaultRouteOptions = [
@@ -44,6 +90,7 @@ const elements = {
   modelSummary: $('modelSummary'),
   health: $('healthStatus'),
   ready: $('readyStatus'),
+  sessions: $('sessionPanel'),
   routes: $('routePanel'),
   models: $('modelsPanel'),
   events: $('eventsPanel'),
@@ -184,8 +231,115 @@ function renderRequestPreview() {
   `).join('');
 }
 
-function saveChatMessages() {
+function activeSession() {
+  return state.chatSessions.find((session) => session.id === state.activeSessionId) || state.chatSessions[0];
+}
+
+function syncActiveSession() {
+  const session = activeSession();
+  if (!session) return;
+  session.messages = state.chatMessages;
+  session.totals = state.sessionTotals;
+  session.updatedAt = new Date().toISOString();
+}
+
+function persistSessions() {
+  syncActiveSession();
+  localStorage.setItem('ope.chatSessions', JSON.stringify(state.chatSessions));
+  localStorage.setItem('ope.activeSessionId', state.activeSessionId);
   sessionStorage.setItem('ope.chatMessages', JSON.stringify(state.chatMessages));
+  sessionStorage.setItem('ope.sessionTotals', JSON.stringify(state.sessionTotals));
+}
+
+function sessionTitleFromMessage(value) {
+  const compact = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!compact) return 'New chat';
+  return compact.length > 40 ? `${compact.slice(0, 37)}...` : compact;
+}
+
+function titleActiveSession(value) {
+  const session = activeSession();
+  if (!session || session.title !== 'New chat') return;
+  session.title = sessionTitleFromMessage(value);
+}
+
+function sessionMeta(session) {
+  const count = session.messages.length;
+  const cost = formatUsd(session.totals?.costUsd || 0);
+  return `${count} ${count === 1 ? 'message' : 'messages'} / ${cost}`;
+}
+
+function renderSessionList() {
+  if (!elements.sessions) return;
+  elements.sessions.innerHTML = state.chatSessions.map((session) => `
+    <button class="session-item ${session.id === state.activeSessionId ? 'active' : ''}" type="button" data-session-id="${escapeHtml(session.id)}">
+      <span class="session-title">${escapeHtml(session.title)}</span>
+      <span class="session-meta">${escapeHtml(sessionMeta(session))}</span>
+    </button>
+  `).join('');
+}
+
+function switchSession(id) {
+  const next = state.chatSessions.find((session) => session.id === id);
+  if (!next || next.id === state.activeSessionId) return;
+  syncActiveSession();
+  state.activeSessionId = next.id;
+  state.chatMessages = next.messages;
+  state.sessionTotals = next.totals;
+  persistSessions();
+  renderChat();
+  renderCost();
+  renderMetrics([]);
+  renderSessionList();
+  setBusy('Ready');
+}
+
+function newChatSession() {
+  syncActiveSession();
+  const session = normalizeSession({ title: 'New chat' });
+  state.chatSessions.unshift(session);
+  state.activeSessionId = session.id;
+  state.chatMessages = session.messages;
+  state.sessionTotals = session.totals;
+  persistSessions();
+  renderChat();
+  renderCost();
+  renderMetrics([]);
+  renderSessionList();
+  setBusy('New chat');
+}
+
+function deleteCurrentSession() {
+  if (state.chatSessions.length <= 1) {
+    const session = activeSession();
+    session.title = 'New chat';
+    state.chatMessages = [];
+    state.sessionTotals = defaultTotals();
+    persistSessions();
+    renderChat();
+    renderCost();
+    renderMetrics([]);
+    renderSessionList();
+    setBusy('Cleared');
+    return;
+  }
+
+  state.chatSessions = state.chatSessions.filter((session) => session.id !== state.activeSessionId);
+  const next = state.chatSessions[0];
+  state.activeSessionId = next.id;
+  state.chatMessages = next.messages;
+  state.sessionTotals = next.totals;
+  persistSessions();
+  renderChat();
+  renderCost();
+  renderMetrics([]);
+  renderSessionList();
+  setBusy('Deleted');
+}
+
+function saveChatMessages() {
+  persistSessions();
+  renderSessionList();
 }
 
 function chatMessageMeta(message) {
@@ -237,6 +391,9 @@ function renderChat() {
 }
 
 function appendChatMessage(role, content, extras = {}) {
+  if (role === 'user') {
+    titleActiveSession(content);
+  }
   const message = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     role,
@@ -343,19 +500,15 @@ function addMessageCost(metadata = {}) {
   state.sessionTotals.outputTokens += outputTokens;
   state.sessionTotals.totalTokens += totalTokens;
   state.sessionTotals.costUsd += costUsd;
-  sessionStorage.setItem('ope.sessionTotals', JSON.stringify(state.sessionTotals));
+  persistSessions();
+  renderSessionList();
   renderCost(metadata);
 }
 
 function resetSessionCost() {
-  state.sessionTotals = {
-    messages: 0,
-    inputTokens: 0,
-    outputTokens: 0,
-    totalTokens: 0,
-    costUsd: 0,
-  };
-  sessionStorage.setItem('ope.sessionTotals', JSON.stringify(state.sessionTotals));
+  state.sessionTotals = defaultTotals();
+  persistSessions();
+  renderSessionList();
   renderCost();
 }
 
@@ -729,6 +882,12 @@ $('resetCostButton').addEventListener('click', resetSessionCost);
 $('clearChatButton').addEventListener('click', clearChatMessages);
 $('exportChatButton').addEventListener('click', exportChat);
 $('forgetKeyButton').addEventListener('click', forgetApiKey);
+$('newChatButton').addEventListener('click', newChatSession);
+$('deleteChatButton').addEventListener('click', deleteCurrentSession);
+elements.sessions.addEventListener('click', (event) => {
+  const sessionButton = event.target.closest('[data-session-id]');
+  if (sessionButton) switchSession(sessionButton.dataset.sessionId);
+});
 elements.answer.addEventListener('click', (event) => {
   const copyButton = event.target.closest('[data-copy-message]');
   if (copyButton) copyMessage(copyButton.dataset.copyMessage);
@@ -770,4 +929,5 @@ renderRequestPreview();
 autosizeComposer();
 renderCost();
 renderChat();
+renderSessionList();
 refreshAll();
