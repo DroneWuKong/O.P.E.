@@ -19,6 +19,11 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -137,6 +142,42 @@ h2 {
   letter-spacing: 0;
 }
 
+.operator-strip {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.operator-strip span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(6, 9, 7, 0.82);
+  color: #b8c0b1;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 7px 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.operator-strip span.ok {
+  border-color: var(--signal-line);
+  color: var(--signal);
+}
+
+.operator-strip span.watch {
+  border-color: rgba(215, 148, 77, 0.4);
+  color: #e7b477;
+}
+
+.operator-strip span.warn {
+  border-color: rgba(186, 107, 69, 0.5);
+  color: #ffb08a;
+}
+
 .section-label {
   align-items: center;
   color: #7d847a;
@@ -199,6 +240,32 @@ h2 {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.prompt-belt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prompt-belt button {
+  min-height: 34px;
+  border: 1px solid rgba(36, 211, 107, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(36, 211, 107, 0.11), rgba(5, 8, 6, 0.82)),
+    rgba(6, 9, 7, 0.84);
+  color: #dce6d4;
+  font-size: 0.84rem;
+  font-weight: 850;
+  padding: 0 11px;
+}
+
+.prompt-belt button:hover,
+.prompt-belt button:focus-visible {
+  border-color: var(--signal);
+  color: var(--signal);
+  outline: none;
 }
 
 .form-grid {
@@ -468,8 +535,8 @@ h2 {
 
 .chat-log {
   overflow: auto;
-  min-height: 360px;
-  max-height: 520px;
+  min-height: 260px;
+  max-height: 460px;
   margin: 12px 0 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -521,6 +588,14 @@ h2 {
   padding: 9px 11px;
 }
 
+.chat-message-head > div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .chat-message-head strong {
   color: var(--signal);
   font-family: "Cascadia Code", "Consolas", monospace;
@@ -533,6 +608,26 @@ h2 {
   font-family: "Cascadia Code", "Consolas", monospace;
   font-size: 0.68rem;
   text-align: right;
+}
+
+.copy-button {
+  min-height: 26px;
+  border: 1px solid rgba(121, 132, 118, 0.22);
+  border-radius: 8px;
+  background: rgba(3, 5, 4, 0.76);
+  color: #aab3a4;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 0 8px;
+  text-transform: uppercase;
+}
+
+.copy-button:hover,
+.copy-button:focus-visible {
+  border-color: var(--signal-line);
+  color: var(--signal);
+  outline: none;
 }
 
 .chat-message-body {
@@ -739,6 +834,12 @@ h2 {
     justify-content: start;
     flex-wrap: wrap;
   }
+
+  .operator-strip {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 620px) {
@@ -748,6 +849,10 @@ h2 {
   }
 
   .status-row {
+    display: none;
+  }
+
+  .operator-strip {
     display: none;
   }
 
@@ -772,6 +877,20 @@ h2 {
 
   .cost-ledger {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .cost-ledger div {
+    padding: 8px 6px;
+  }
+
+  .cost-ledger span,
+  .cost-ledger small {
+    font-size: 0.66rem;
+  }
+
+  .cost-ledger strong {
+    font-size: 1.14rem;
   }
 
   .cost-reset {
@@ -791,7 +910,19 @@ h2 {
   }
 
   .chat-log {
-    min-height: 300px;
+    min-height: 220px;
+    max-height: 360px;
+    padding: 12px;
+  }
+
+  .prompt-belt {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .prompt-belt button {
+    min-width: 0;
+    padding: 0 8px;
   }
 
   .answer-tools {

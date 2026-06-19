@@ -12,6 +12,15 @@ const state = {
   chatMessages: JSON.parse(sessionStorage.getItem('ope.chatMessages') || '[]'),
 };
 
+const defaultRouteOptions = [
+  { route: 'quick_lookup', primary_model: 'openai-mini' },
+  { route: 'technical_search', primary_model: 'gemini-main' },
+  { route: 'codebase_work', primary_model: 'claude-coding' },
+  { route: 'deep_reasoning', primary_model: 'claude-main' },
+  { route: 'private_memory', primary_model: 'openai-main' },
+  { route: 'tool_action', primary_model: 'claude-main' },
+];
+
 const $ = (id) => document.getElementById(id);
 
 const elements = {
@@ -31,6 +40,7 @@ const elements = {
   messageTokens: $('messageTokens'),
   sessionCost: $('sessionCost'),
   sessionTokens: $('sessionTokens'),
+  modelSummary: $('modelSummary'),
   health: $('healthStatus'),
   ready: $('readyStatus'),
   routes: $('routePanel'),
@@ -42,7 +52,6 @@ const elements = {
 
 elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
-elements.mode.value = state.mode;
 
 function normalizedApiKey() {
   return elements.apiKey.value.trim().replace(/^Bearer\s+/i, '');
@@ -136,6 +145,25 @@ function renderMetrics(items) {
     .join('');
 }
 
+function routeLabel(value) {
+  return String(value || '')
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function populateRouteOptions(routes = defaultRouteOptions) {
+  const selected = elements.mode.options.length ? elements.mode.value : state.mode || 'auto';
+  const options = [
+    '<option value="auto">Auto route</option>',
+    ...routes.map((route) => (
+      `<option value="${escapeHtml(route.route)}">${escapeHtml(routeLabel(route.route))} / ${escapeHtml(route.primary_model || 'model?')}</option>`
+    )),
+  ];
+  elements.mode.innerHTML = options.join('');
+  elements.mode.value = [...elements.mode.options].some((option) => option.value === selected) ? selected : 'auto';
+}
+
 function saveChatMessages() {
   sessionStorage.setItem('ope.chatMessages', JSON.stringify(state.chatMessages));
 }
@@ -159,11 +187,17 @@ function renderChat() {
   }
   elements.answer.innerHTML = state.chatMessages.map((message) => {
     const meta = chatMessageMeta(message);
+    const copyButton = message.role !== 'user' && message.status !== 'pending'
+      ? `<button class="copy-button" type="button" data-copy-message="${escapeHtml(message.id)}">Copy</button>`
+      : '';
     return `
       <article class="chat-message ${escapeHtml(message.role)} ${message.status === 'pending' ? 'pending' : ''}">
         <div class="chat-message-head">
           <strong>${message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'O.P.E.'}</strong>
-          ${meta ? `<span>${escapeHtml(meta)}</span>` : ''}
+          <div>
+            ${meta ? `<span>${escapeHtml(meta)}</span>` : ''}
+            ${copyButton}
+          </div>
         </div>
         <div class="chat-message-body">${escapeHtml(message.content)}</div>
       </article>
@@ -247,13 +281,6 @@ function resetSessionCost() {
   renderCost();
 }
 
-function routeLabel(value) {
-  return String(value || '')
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 function modelStatusText(info = {}) {
   const failure = info.last_failure ? String(info.last_failure).replaceAll('_', ' ') : '';
   const cooldown = Number(info.cooldown_remaining_seconds || 0);
@@ -274,6 +301,18 @@ function modelStatusClass(info = {}) {
     return 'watch';
   }
   return 'ok';
+}
+
+function renderModelSummary(data = {}) {
+  const provider = data.provider_health || {};
+  const names = data.models?.length ? data.models : Object.keys(provider);
+  const counts = names.reduce((acc, name) => {
+    const level = modelStatusClass(provider[name] || { available: null });
+    acc[level] = (acc[level] || 0) + 1;
+    return acc;
+  }, { ok: 0, watch: 0, warn: 0 });
+  elements.modelSummary.textContent = `Models: ${counts.ok || 0} ready / ${counts.watch || 0} watch / ${counts.warn || 0} down`;
+  elements.modelSummary.className = counts.warn ? 'warn' : counts.watch ? 'watch' : 'ok';
 }
 
 function requestBody() {
@@ -399,6 +438,7 @@ async function loadRoutes() {
   if (!requireApiKey(elements.routes)) return;
   try {
     const data = await api('/routes');
+    populateRouteOptions(data.routes || defaultRouteOptions);
     elements.routes.innerHTML = data.routes.map((route) => `
       <details class="route-item">
         <summary>
@@ -418,6 +458,7 @@ async function loadModels() {
   if (!requireApiKey(elements.models)) return;
   try {
     const data = await api('/models/status');
+    renderModelSummary(data);
     const provider = data.provider_health || {};
     const names = data.models?.length ? data.models : Object.keys(provider);
     const rows = names.map((name) => {
@@ -431,6 +472,8 @@ async function loadModels() {
     });
     elements.models.innerHTML = rows.join('') || '<p class="empty">No provider health recorded yet.</p>';
   } catch (error) {
+    elements.modelSummary.textContent = 'Models: check failed';
+    elements.modelSummary.className = 'warn';
     renderEmpty(elements.models, error.message);
   }
 }
@@ -548,6 +591,9 @@ function wireTabs() {
 async function refreshAll() {
   await checkStatus();
   if (!hasApiKey()) {
+    populateRouteOptions();
+    elements.modelSummary.textContent = 'Models: key needed';
+    elements.modelSummary.className = 'watch';
     renderEmpty(elements.routes, 'Enter your OPE API key to load routes.');
     renderEmpty(elements.models, 'Enter your OPE API key to load models.');
     renderEmpty(elements.events, 'Enter your OPE API key to load events.');
@@ -555,6 +601,28 @@ async function refreshAll() {
     return;
   }
   await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadTools()]);
+}
+
+function autosizeComposer() {
+  elements.query.style.height = 'auto';
+  elements.query.style.height = `${Math.min(elements.query.scrollHeight, 220)}px`;
+}
+
+function fillPrompt(prompt) {
+  elements.query.value = prompt;
+  autosizeComposer();
+  elements.query.focus();
+}
+
+async function copyMessage(id) {
+  const message = state.chatMessages.find((item) => item.id === id);
+  if (!message) return;
+  try {
+    await navigator.clipboard.writeText(message.content);
+    setBusy('Copied');
+  } catch (error) {
+    setBusy('Copy failed');
+  }
 }
 
 $('askForm').addEventListener('submit', submitAsk);
@@ -569,9 +637,25 @@ $('memoryWriteForm').addEventListener('submit', writeMemory);
 $('resetCostButton').addEventListener('click', resetSessionCost);
 $('clearChatButton').addEventListener('click', clearChatMessages);
 $('forgetKeyButton').addEventListener('click', forgetApiKey);
+elements.answer.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-copy-message]');
+  if (button) copyMessage(button.dataset.copyMessage);
+});
+document.querySelectorAll('[data-prompt]').forEach((button) => {
+  button.addEventListener('click', () => fillPrompt(button.dataset.prompt));
+});
+elements.query.addEventListener('input', autosizeComposer);
+elements.query.addEventListener('keydown', (event) => {
+  const desktopSend = window.matchMedia('(min-width: 700px)').matches;
+  if (desktopSend && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $('askForm').requestSubmit();
+  }
+});
 elements.apiKey.addEventListener('input', persistApiKey);
 elements.apiKey.addEventListener('change', refreshAll);
 elements.mode.addEventListener('change', () => {
+  state.mode = elements.mode.value || 'auto';
   localStorage.setItem('ope.mode', elements.mode.value || 'auto');
 });
 elements.project.addEventListener('change', () => {
@@ -580,6 +664,8 @@ elements.project.addEventListener('change', () => {
 });
 
 wireTabs();
+populateRouteOptions();
+autosizeComposer();
 renderCost();
 renderChat();
 refreshAll();

@@ -18,6 +18,10 @@
           <h1>O.P.E.</h1>
           <span>/ Octoputer</span>
         </div>
+        <div class="operator-strip" aria-label="Current operating mode">
+          <span id="voiceBadge">Upper Midwest voice</span>
+          <span id="modelSummary">Models: checking</span>
+        </div>
         <div class="status-row" aria-live="polite">
           <span class="status-pill" id="healthStatus">Health: checking</span>
           <span class="status-pill" id="readyStatus">Ready: checking</span>
@@ -61,6 +65,12 @@
           </section>
 
           <form id="askForm" class="ask-form">
+            <div class="prompt-belt" aria-label="Quick prompts">
+              <button type="button" data-prompt="What can you do right now?">What can you do?</button>
+              <button type="button" data-prompt="Check O.P.E. health and tell me what needs attention.">Health check</button>
+              <button type="button" data-prompt="Explain the next practical step for this project.">Next step</button>
+              <button type="button" data-prompt="What did we just change, in plain language?">Plain recap</button>
+            </div>
             <label class="field composer-field">
               <span>Message</span>
               <textarea id="queryInput" rows="3" placeholder="Ask O.P.E. what it can do right now..."></textarea>
@@ -79,12 +89,6 @@
                   <span>Route</span>
                   <select id="modeInput">
                     <option value="auto" selected>Auto route</option>
-                    <option value="quick_lookup">Quick lookup</option>
-                    <option value="technical_search">Technical search</option>
-                    <option value="codebase_work">Codebase work</option>
-                    <option value="deep_reasoning">Deep reasoning</option>
-                    <option value="private_memory">Private memory</option>
-                    <option value="tool_action">Tool action</option>
                   </select>
                 </label>
                 <label class="field">

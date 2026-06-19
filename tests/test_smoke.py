@@ -29,6 +29,9 @@ def test_ui_index() -> None:
 
     assert response.status_code == 200
     assert 'O.P.E. Chat' in response.text
+    assert 'Upper Midwest voice' in response.text
+    assert 'Quick prompts' in response.text
+    assert 'What can you do?' in response.text
 
 
 def test_health() -> None:
