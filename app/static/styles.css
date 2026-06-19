@@ -848,6 +848,48 @@ h2 {
   padding: 12px;
 }
 
+.connector-item {
+  display: grid;
+  gap: 7px;
+}
+
+.connector-item strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.connector-item strong span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.connector-item.ok strong span {
+  border-color: var(--signal-line);
+  color: var(--signal);
+}
+
+.connector-item.watch strong span {
+  border-color: rgba(215, 148, 77, 0.42);
+  color: #e7b477;
+}
+
+.connector-item.warn strong span {
+  border-color: rgba(186, 107, 69, 0.5);
+  color: #ffb08a;
+}
+
+.connector-item small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .route-item {
   padding: 0;
 }

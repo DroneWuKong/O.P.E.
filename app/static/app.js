@@ -95,6 +95,7 @@ const elements = {
   models: $('modelsPanel'),
   events: $('eventsPanel'),
   memory: $('memoryPanel'),
+  connectors: $('connectorsPanel'),
   toolsPanel: $('toolsPanel'),
 };
 
@@ -822,6 +823,36 @@ async function loadTools() {
   }
 }
 
+function connectorStatusClass(status) {
+  if (status === 'configured') return 'ok';
+  if (status === 'disabled') return 'warn';
+  return 'watch';
+}
+
+async function loadConnectors() {
+  if (!requireApiKey(elements.connectors)) return;
+  try {
+    const data = await api('/connectors');
+    const connectors = data.connectors || [];
+    elements.connectors.innerHTML = connectors.map((connector) => {
+      const actions = (connector.actions || []).map((action) => (
+        `${action.name}${action.read_only ? '' : ' *'}`
+      )).join(', ');
+      return `
+        <div class="row-item connector-item ${connectorStatusClass(connector.status)}">
+          <strong>${escapeHtml(connector.name)} <span>${escapeHtml(connector.status)}</span></strong>
+          <span>${escapeHtml(connector.auth_type)} / ${escapeHtml(connector.scopes.join(', '))}</span>
+          <small>${escapeHtml(actions || 'No actions registered.')}</small>
+          <small>${escapeHtml(connector.notes)}</small>
+        </div>
+      `;
+    }).join('');
+    if (!connectors.length) renderEmpty(elements.connectors);
+  } catch (error) {
+    renderEmpty(elements.connectors, error.message);
+  }
+}
+
 function wireTabs() {
   document.querySelectorAll('.tab-button').forEach((button) => {
     button.addEventListener('click', () => {
@@ -842,10 +873,11 @@ async function refreshAll() {
     renderEmpty(elements.routes, 'Enter your OPE API key to load routes.');
     renderEmpty(elements.models, 'Enter your OPE API key to load models.');
     renderEmpty(elements.events, 'Enter your OPE API key to load events.');
+    renderEmpty(elements.connectors, 'Enter your OPE API key to load connectors.');
     renderEmpty(elements.toolsPanel, 'Enter your OPE API key to load tools.');
     return;
   }
-  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadTools()]);
+  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadConnectors(), loadTools()]);
 }
 
 function autosizeComposer() {
@@ -875,6 +907,7 @@ $('refreshButton').addEventListener('click', refreshAll);
 $('routesButton').addEventListener('click', loadRoutes);
 $('modelsButton').addEventListener('click', loadModels);
 $('eventsButton').addEventListener('click', loadEvents);
+$('connectorsButton').addEventListener('click', loadConnectors);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);

@@ -62,6 +62,10 @@ curl -s http://localhost:8080/memory/stats
 curl -s 'http://localhost:8080/events/recent?project=ope-core&limit=10'
 curl -s http://localhost:8080/routes
 curl -s http://localhost:8080/approvals
+curl -s http://localhost:8080/connectors
+curl -s http://localhost:8080/connectors/github/jobs \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"search_repos","payload":{"query":"OPE"},"approval_tokens":["tool_action_approved"]}'
 curl -s 'http://localhost:8080/tools/jobs?status=pending_review&limit=10'
 curl -s 'http://localhost:8080/tools/queue/stats?project=ope-core'
 curl -s http://localhost:8080/tools/jobs/claim \
@@ -96,6 +100,8 @@ curl -H "Authorization: Bearer <ope-api-key>" http://localhost:8080/routes
 - `GET /events/recent`
 - `GET /routes`
 - `GET /approvals`
+- `GET /connectors`
+- `POST /connectors/{connector_id}/jobs`
 - `GET /tools/jobs`
 - `GET /tools/queue/stats`
 - `POST /tools/jobs`
@@ -118,6 +124,13 @@ would choose without calling LiteLLM or writing memory.
 
 `/events/recent` exposes recent query events for audit/debugging, and
 `/memory/stats` summarizes persisted memory by project, type, and scope.
+
+`/connectors` exposes O.P.E.'s connector catalog for GitHub, Google Drive, and
+Gmail without returning secret values. Connector actions are converted into
+reviewed tool jobs through `POST /connectors/{connector_id}/jobs`, so external
+service access still flows through the approval queue. Gmail is disabled by
+default; enable it only after Google OAuth is configured and you are comfortable
+with mailbox scopes.
 
 Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
 classified without approval, but `/ask` rejects it until the request includes the
@@ -178,6 +191,9 @@ Required GitHub secrets:
 - `GEMINI_API_KEY`
 - `MISTRAL_API_KEY`
 - `LITELLM_MASTER_KEY` optional
+- connector secrets as needed: `GITHUB_TOKEN` or GitHub App credentials,
+  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and optionally
+  `GOOGLE_SERVICE_ACCOUNT_JSON`
 
 For manual kubectl testing only, copy `k8s/secrets.example.yaml` outside the
 repo, replace every placeholder, and apply that private copy.

@@ -37,6 +37,7 @@ def test_ui_index() -> None:
     assert 'Chats' in response.text
     assert 'New chat' in response.text
     assert 'sessionPanel' in response.text
+    assert 'Connectors' in response.text
 
 
 def test_health() -> None:
@@ -95,6 +96,58 @@ def test_approval_policy_catalog() -> None:
     rules = response.json()['rules']
     assert rules[0]['token'] == 'tool_action_approved'
     assert rules[0]['applies_to_routes'] == ['tool_action']
+
+
+def test_connectors_catalog() -> None:
+    response = client.get('/connectors')
+
+    assert response.status_code == 200
+    connectors = {item['id']: item for item in response.json()['connectors']}
+    assert connectors['github']['name'] == 'GitHub'
+    assert connectors['google_drive']['auth_type'] == 'oauth_or_service_account'
+    assert connectors['gmail']['status'] == 'disabled'
+    assert any(action['name'] == 'search_repos' for action in connectors['github']['actions'])
+
+
+def test_connector_job_requires_approval() -> None:
+    response = client.post('/connectors/github/jobs', json={'action': 'search_repos'})
+
+    assert response.status_code == 403
+    assert response.json()['detail']['required_approval'] == 'tool_action_approved'
+
+
+def test_connector_job_creates_tool_job(monkeypatch) -> None:
+    async def fake_create(req, query_event_id=None, route='tool_action'):
+        assert query_event_id is None
+        assert route == 'tool_action'
+        assert req.tool_name == 'connector:github'
+        assert req.action == 'search_repos'
+        assert req.payload == {'query': 'OPE'}
+        return ToolJob(
+            id='job-connector-1',
+            project=req.project,
+            tool_name=req.tool_name,
+            action=req.action,
+            payload=req.payload,
+            requested_by=req.requested_by,
+        )
+
+    monkeypatch.setattr(main, 'create_tool_job', fake_create)
+
+    response = client.post(
+        '/connectors/github/jobs',
+        json={
+            'project': 'ope-core',
+            'action': 'search_repos',
+            'payload': {'query': 'OPE'},
+            'approval_tokens': ['tool_action_approved'],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['tool_name'] == 'connector:github'
+    assert body['payload']['query'] == 'OPE'
 
 
 def test_plan_preview() -> None:

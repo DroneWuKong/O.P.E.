@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     tool_runner_lease_seconds: int = 300
     tool_runner_once: bool = False
 
+    github_token: str | None = None
+    github_app_id: str | None = None
+    github_app_private_key: str | None = None
+
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    google_service_account_json: str | None = None
+    google_drive_enabled: bool = True
+    gmail_enabled: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

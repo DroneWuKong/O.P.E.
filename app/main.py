@@ -13,6 +13,9 @@ from app.models import (
     ApprovalPolicyResponse,
     AskRequest,
     AskResponse,
+    ConnectorId,
+    ConnectorJobCreateRequest,
+    ConnectorsResponse,
     MemoryItem,
     MemorySearchRequest,
     MemorySearchResponse,
@@ -32,6 +35,7 @@ from app.models import (
 )
 from app.approvals import list_approval_rules, tokens_approve_route
 from app.auth import require_api_key
+from app.connectors import connector_supports_action, list_connectors
 from app.planner import build_plan, list_model_aliases, list_routes
 from app.memory import (
     close_memory_store,
@@ -127,6 +131,7 @@ def root() -> dict:
             'routes': '/routes',
             'plan': '/plan',
             'ask': '/ask',
+            'connectors': '/connectors',
             'memory_search': '/memory/search',
             'tool_queue_stats': '/tools/queue/stats',
         },
@@ -184,6 +189,39 @@ def plan(req: AskRequest) -> RoutePlan:
 @app.get('/approvals', response_model=ApprovalPolicyResponse, dependencies=[Depends(require_api_key)])
 def approvals() -> ApprovalPolicyResponse:
     return ApprovalPolicyResponse(rules=list_approval_rules())
+
+
+@app.get('/connectors', response_model=ConnectorsResponse, dependencies=[Depends(require_api_key)])
+def connectors() -> ConnectorsResponse:
+    return ConnectorsResponse(connectors=list_connectors())
+
+
+@app.post('/connectors/{connector_id}/jobs', response_model=ToolJob, dependencies=[Depends(require_api_key)])
+async def create_connector_job(connector_id: ConnectorId, req: ConnectorJobCreateRequest) -> ToolJob:
+    if not connector_supports_action(connector_id, req.action):
+        raise HTTPException(
+            status_code=404,
+            detail={'error': 'connector_action_not_found', 'connector': connector_id, 'action': req.action},
+        )
+    if not tokens_approve_route(req.approval_tokens, 'tool_action'):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                'error': 'approval_required',
+                'required_approval': 'tool_action_approved',
+            },
+        )
+    return await create_tool_job(
+        ToolJobCreateRequest(
+            project=req.project,
+            tool_name=f'connector:{connector_id}',
+            action=req.action,
+            payload=req.payload,
+            requested_by=req.requested_by or 'connector',
+            approval_tokens=req.approval_tokens,
+        ),
+        route='tool_action',
+    )
 
 
 @app.post('/ask', response_model=AskResponse, dependencies=[Depends(require_api_key)])

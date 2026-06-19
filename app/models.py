@@ -20,6 +20,9 @@ ToolJobStatus = Literal[
     'cancelled',
 ]
 
+ConnectorId = Literal['github', 'google_drive', 'gmail']
+ConnectorStatus = Literal['configured', 'needs_auth', 'disabled']
+
 
 class AskRequest(BaseModel):
     query: str = Field(..., min_length=1)
@@ -77,6 +80,37 @@ class ApprovalRule(BaseModel):
 
 class ApprovalPolicyResponse(BaseModel):
     rules: list[ApprovalRule] = Field(default_factory=list)
+
+
+class ConnectorAction(BaseModel):
+    name: str
+    description: str
+    read_only: bool = True
+    requires_approval: bool = True
+
+
+class ConnectorSpec(BaseModel):
+    id: ConnectorId
+    name: str
+    provider: str
+    status: ConnectorStatus
+    auth_type: str
+    auth_configured: bool = False
+    scopes: list[str] = Field(default_factory=list)
+    actions: list[ConnectorAction] = Field(default_factory=list)
+    notes: str = ''
+
+
+class ConnectorsResponse(BaseModel):
+    connectors: list[ConnectorSpec] = Field(default_factory=list)
+
+
+class ConnectorJobCreateRequest(BaseModel):
+    project: str | None = None
+    action: str = Field(..., min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    requested_by: str | None = None
+    approval_tokens: list[str] = Field(default_factory=list)
 
 
 class MemoryItem(BaseModel):
