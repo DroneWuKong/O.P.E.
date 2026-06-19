@@ -150,8 +150,12 @@ def get_connector(connector_id: ConnectorId) -> ConnectorSpec | None:
     return next((connector for connector in list_connectors() if connector.id == connector_id), None)
 
 
-def connector_supports_action(connector_id: ConnectorId, action: str) -> bool:
+def get_connector_action(connector_id: ConnectorId, action: str) -> ConnectorAction | None:
     connector = get_connector(connector_id)
     if connector is None:
-        return False
-    return any(item.name == action for item in connector.actions)
+        return None
+    return next((item for item in connector.actions if item.name == action), None)
+
+
+def connector_supports_action(connector_id: ConnectorId, action: str) -> bool:
+    return get_connector_action(connector_id, action) is not None

@@ -149,6 +149,18 @@ def test_connector_job_enters_approval_queue(monkeypatch) -> None:
     assert response.json()['status'] == 'pending_review'
 
 
+def test_connector_external_write_job_is_not_queueable(monkeypatch) -> None:
+    async def fake_create(req, query_event_id=None, route='tool_action'):
+        raise AssertionError('external write actions must not be queued')
+
+    monkeypatch.setattr(main, 'create_tool_job', fake_create)
+
+    response = client.post('/connectors/github/jobs', json={'action': 'create_issue'})
+
+    assert response.status_code == 403
+    assert response.json()['detail']['error'] == 'connector_external_write_blocked'
+
+
 def test_connector_job_creates_tool_job(monkeypatch) -> None:
     async def fake_create(req, query_event_id=None, route='tool_action'):
         assert query_event_id is None

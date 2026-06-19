@@ -147,7 +147,7 @@ The worker also allowlists O.P.E.-local draft actions:
 Local draft actions return reviewable draft results with
 `external_side_effect=false`; they do not create Gmail drafts, GitHub issues, or
 Drive edits. Real write/send actions remain cataloged for planning but are not
-executable by the worker yet. Configure `OPE_GITHUB_TOKEN`,
+queueable or executable by the worker yet. Configure `OPE_GITHUB_TOKEN`,
 `GOOGLE_ACCESS_TOKEN`, or `GMAIL_ACCESS_TOKEN` as GitHub secrets before deploying
 if you want read actions to run on Octoputer.
 

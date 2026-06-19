@@ -35,7 +35,7 @@ from app.models import (
 )
 from app.approvals import list_approval_rules, tokens_approve_route
 from app.auth import require_api_key
-from app.connectors import connector_supports_action, list_connectors
+from app.connectors import get_connector_action, list_connectors
 from app.planner import build_plan, list_model_aliases, list_routes
 from app.memory import (
     close_memory_store,
@@ -198,10 +198,21 @@ def connectors() -> ConnectorsResponse:
 
 @app.post('/connectors/{connector_id}/jobs', response_model=ToolJob, dependencies=[Depends(require_api_key)])
 async def create_connector_job(connector_id: ConnectorId, req: ConnectorJobCreateRequest) -> ToolJob:
-    if not connector_supports_action(connector_id, req.action):
+    action = get_connector_action(connector_id, req.action)
+    if action is None:
         raise HTTPException(
             status_code=404,
             detail={'error': 'connector_action_not_found', 'connector': connector_id, 'action': req.action},
+        )
+    if action.external_write:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                'error': 'connector_external_write_blocked',
+                'connector': connector_id,
+                'action': req.action,
+                'message': 'External provider writes are cataloged but not queueable in this milestone.',
+            },
         )
     return await create_tool_job(
         ToolJobCreateRequest(
