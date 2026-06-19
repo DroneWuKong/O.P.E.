@@ -66,27 +66,29 @@
           </section>
 
           <form id="askForm" class="ask-form">
-            <div class="prompt-belt" aria-label="Quick prompts">
-              <button type="button" data-prompt="What can you do right now?">What can you do?</button>
-              <button type="button" data-prompt="Check O.P.E. health and tell me what needs attention.">Health check</button>
-              <button type="button" data-prompt="Explain the next practical step for this project.">Next step</button>
-              <button type="button" data-prompt="What did we just change, in plain language?">Plain recap</button>
-            </div>
-            <div class="request-preview" id="requestPreview" aria-live="polite"></div>
             <label class="field composer-field">
               <span>Message</span>
-              <textarea id="queryInput" rows="3" placeholder="Ask O.P.E. what it can do right now..."></textarea>
+              <textarea id="queryInput" rows="2" placeholder="Ask O.P.E. what it can do right now..."></textarea>
             </label>
 
             <div class="action-row">
               <button class="primary-button" id="askButton" type="submit">Send</button>
-              <button class="secondary-button" id="retryButton" type="button">Retry Last</button>
-              <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
               <span id="requestState" class="request-state">Idle</span>
             </div>
 
-            <details class="option-drawer">
-              <summary>Routing settings</summary>
+            <details class="option-drawer more-drawer">
+              <summary>Options</summary>
+              <div class="drawer-actions">
+                <button class="secondary-button" id="retryButton" type="button">Retry Last</button>
+                <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
+              </div>
+              <div class="prompt-belt" aria-label="Quick prompts">
+                <button type="button" data-prompt="What can you do right now?">What can you do?</button>
+                <button type="button" data-prompt="Check O.P.E. health and tell me what needs attention.">Health check</button>
+                <button type="button" data-prompt="Explain the next practical step for this project.">Next step</button>
+                <button type="button" data-prompt="What did we just change, in plain language?">Plain recap</button>
+              </div>
+              <div class="request-preview" id="requestPreview" aria-live="polite"></div>
               <div class="form-grid">
                 <label class="field">
                   <span>Route</span>
@@ -121,10 +123,6 @@
                 <label><input id="toolsInput" type="checkbox" /> Tools</label>
                 <label><input id="approvalInput" type="checkbox" /> Approval token</label>
               </div>
-            </details>
-
-            <details class="option-drawer access-drawer">
-              <summary>Access</summary>
               <div class="access-row">
                 <label class="field">
                   <span>API key</span>
