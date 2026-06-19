@@ -952,6 +952,55 @@ h2 {
   color: var(--muted);
 }
 
+.upload-item details {
+  margin-top: 7px;
+}
+
+.upload-item summary {
+  color: var(--signal);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.upload-item p {
+  margin: 6px 0 0;
+  color: #c8d0c2;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.warn-badge,
+.ok-badge {
+  border: 1px solid rgba(210, 170, 95, 0.35);
+  border-radius: 999px;
+  color: #e7c882;
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 900;
+  margin-left: 6px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.ok-badge {
+  border-color: var(--signal-line);
+  color: var(--signal);
+}
+
+.danger-button {
+  border-color: rgba(186, 107, 69, 0.46);
+  color: #ffb08a;
+}
+
 .payload-drawer {
   border: 1px solid rgba(121, 132, 118, 0.16);
   border-radius: 8px;

@@ -334,6 +334,56 @@ def test_upload_file_and_list(tmp_path, monkeypatch) -> None:
     assert list_response.json()['uploads'][0]['id'] == body['id']
 
 
+def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        uploads,
+        'get_settings',
+        lambda: SimpleNamespace(
+            ope_upload_root=str(tmp_path),
+            ope_upload_max_bytes=1024 * 1024,
+            ope_default_project='ope-core',
+        ),
+    )
+
+    payload = b'ACME Hardware\nDate: 06/18/2026\nTotal: $42.19\nInvoice # INV-7788\n'
+    upload_response = client.post(
+        '/uploads',
+        data={'project': 'ope-core', 'description': 'bench receipt'},
+        files={'file': ('acme-receipt.txt', payload, 'text/plain')},
+    )
+
+    assert upload_response.status_code == 200
+    body = upload_response.json()
+    assert body['category'] == 'receipts'
+    assert body['needs_review'] is False
+    assert body['extracted_fields']['vendor'] == 'ACME Hardware'
+    assert body['extracted_fields']['amount'] == '42.19'
+    assert 'ACME Hardware' in body['extracted_text_preview']
+
+    search_response = client.get('/uploads?project=ope-core&query=ACME&limit=5')
+    assert search_response.status_code == 200
+    assert search_response.json()['uploads'][0]['id'] == body['id']
+
+    patch_response = client.patch(
+        f"/uploads/{body['id']}",
+        json={'category': 'home', 'description': 'home bench receipt', 'needs_review': False},
+    )
+    assert patch_response.status_code == 200
+    patched = patch_response.json()
+    assert patched['category'] == 'home'
+    assert patched['description'] == 'home bench receipt'
+    assert patched['relative_path'].startswith('ope-core/home/')
+    assert (tmp_path / patched['relative_path']).exists()
+
+    download_response = client.get(f"/uploads/{body['id']}/file")
+    assert download_response.status_code == 200
+    assert download_response.content == payload
+
+    delete_response = client.delete(f"/uploads/{body['id']}")
+    assert delete_response.status_code == 200
+    assert not (tmp_path / patched['relative_path']).exists()
+
+
 def test_recent_events(monkeypatch) -> None:
     async def fake_events(project=None, success=None, limit=25):
         assert project == 'ope-core'

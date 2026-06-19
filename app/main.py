@@ -6,6 +6,7 @@ from pathlib import Path
 import time
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -33,6 +34,7 @@ from app.models import (
     ToolJobStatus,
     ToolJobUpdateRequest,
     UploadCategorySuggestion,
+    UploadUpdateRequest,
     UploadedFileRecord,
     UploadsResponse,
 )
@@ -61,7 +63,7 @@ from app.tools import (
     tool_queue_stats,
     update_tool_job,
 )
-from app.uploads import list_uploads, save_upload, suggest_category
+from app.uploads import delete_upload, find_upload, list_uploads, save_upload, suggest_category, update_upload, uploaded_file_path
 
 
 logger = logging.getLogger(__name__)
@@ -431,9 +433,51 @@ async def upload_file(
 def recent_uploads(
     project: str | None = None,
     category: str | None = None,
+    query: str | None = None,
+    needs_review: bool | None = None,
     limit: int = Query(25, ge=1, le=100),
 ) -> UploadsResponse:
-    return UploadsResponse(uploads=list_uploads(project=project, category=category, limit=limit))
+    return UploadsResponse(
+        uploads=list_uploads(
+            project=project,
+            category=category,
+            query=query,
+            needs_review=needs_review,
+            limit=limit,
+        )
+    )
+
+
+@app.patch('/uploads/{upload_id}', response_model=UploadedFileRecord, dependencies=[Depends(require_api_key)])
+def patch_upload(upload_id: str, req: UploadUpdateRequest) -> UploadedFileRecord:
+    record = update_upload(
+        upload_id,
+        category=req.category,
+        description=req.description,
+        needs_review=req.needs_review,
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail={'error': 'upload_not_found'})
+    return record
+
+
+@app.delete('/uploads/{upload_id}', response_model=UploadedFileRecord, dependencies=[Depends(require_api_key)])
+def remove_upload(upload_id: str) -> UploadedFileRecord:
+    record = delete_upload(upload_id)
+    if not record:
+        raise HTTPException(status_code=404, detail={'error': 'upload_not_found'})
+    return record
+
+
+@app.get('/uploads/{upload_id}/file', dependencies=[Depends(require_api_key)])
+def download_upload(upload_id: str) -> FileResponse:
+    record = find_upload(upload_id)
+    if not record:
+        raise HTTPException(status_code=404, detail={'error': 'upload_not_found'})
+    path = uploaded_file_path(record)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail={'error': 'upload_file_missing'})
+    return FileResponse(path, media_type=record.content_type, filename=record.original_filename)
 
 
 @app.post('/tools/jobs', response_model=ToolJob, dependencies=[Depends(require_api_key)])

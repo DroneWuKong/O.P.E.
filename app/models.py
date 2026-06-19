@@ -210,11 +210,21 @@ class UploadedFileRecord(BaseModel):
     sha256: str
     relative_path: str
     description: str | None = None
+    extracted_text_preview: str | None = None
+    extracted_fields: dict[str, Any] = Field(default_factory=dict)
+    needs_review: bool = False
+    review_reason: str | None = None
     created_at: str
 
 
 class UploadsResponse(BaseModel):
     uploads: list[UploadedFileRecord] = Field(default_factory=list)
+
+
+class UploadUpdateRequest(BaseModel):
+    category: str | None = None
+    description: str | None = None
+    needs_review: bool | None = None
 
 
 class ToolJob(BaseModel):

@@ -103,6 +103,10 @@ const elements = {
   uploadCategory: $('uploadCategoryInput'),
   uploadDescription: $('uploadDescriptionInput'),
   uploadSuggestion: $('uploadSuggestionText'),
+  uploadFilterForm: $('uploadFilterForm'),
+  uploadSearch: $('uploadSearchInput'),
+  uploadFilterCategory: $('uploadFilterCategoryInput'),
+  uploadReviewFilter: $('uploadReviewFilterInput'),
   connectors: $('connectorsPanel'),
   toolsPanel: $('toolsPanel'),
   draftJobForm: $('draftJobForm'),
@@ -964,23 +968,133 @@ async function uploadLocalFile(event) {
   }
 }
 
+function uploadFieldSummary(upload = {}) {
+  const fields = upload.extracted_fields || {};
+  const items = [];
+  if (fields.vendor) items.push(`vendor ${fields.vendor}`);
+  if (fields.date) items.push(`date ${fields.date}`);
+  if (fields.amount) items.push(`$${fields.amount}`);
+  if (fields.reference) items.push(`ref ${fields.reference}`);
+  if (fields.extraction_method) items.push(fields.extraction_method);
+  return items.join(' / ');
+}
+
+function uploadReviewBadge(upload = {}) {
+  if (!upload.needs_review) return '<span class="ok-badge">reviewed</span>';
+  return `<span class="warn-badge">${escapeHtml(upload.review_reason || 'needs review')}</span>`;
+}
+
+async function downloadUpload(uploadId, filename) {
+  try {
+    const response = await fetch(`/uploads/${encodeURIComponent(uploadId)}/file`, {
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || response.statusText);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename || 'upload';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+  }
+}
+
+async function reclassifyUpload(uploadId) {
+  const category = window.prompt('New category: receipts, bills, invoices, statements, taxes, medical, insurance, warranties, home, vehicle, banking, inbox');
+  if (!category) return;
+  try {
+    await api(`/uploads/${encodeURIComponent(uploadId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ category, needs_review: false }),
+    });
+    await loadUploads();
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+  }
+}
+
+async function markUploadReviewed(uploadId) {
+  try {
+    await api(`/uploads/${encodeURIComponent(uploadId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ needs_review: false }),
+    });
+    await loadUploads();
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+  }
+}
+
+async function deleteUpload(uploadId, filename) {
+  if (!window.confirm(`Delete ${filename || 'this upload'} from local storage?`)) return;
+  try {
+    await api(`/uploads/${encodeURIComponent(uploadId)}`, { method: 'DELETE' });
+    await loadUploads();
+  } catch (error) {
+    elements.uploadSuggestion.textContent = error.message;
+  }
+}
+
 async function loadUploads() {
   if (!requireApiKey(elements.uploads)) return;
   try {
-    const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
-    const data = await api(`/uploads?project=${project}&limit=20`);
+    const params = new URLSearchParams({
+      project: elements.project.value.trim() || 'ope-core',
+      limit: '30',
+    });
+    if (elements.uploadSearch.value.trim()) params.set('query', elements.uploadSearch.value.trim());
+    if (elements.uploadFilterCategory.value) params.set('category', elements.uploadFilterCategory.value);
+    if (elements.uploadReviewFilter.value) params.set('needs_review', elements.uploadReviewFilter.value);
+    const data = await api(`/uploads?${params.toString()}`);
     const uploads = data.uploads || [];
     elements.uploads.innerHTML = uploads.map((upload) => `
-      <div class="row-item upload-item">
-        <strong>${escapeHtml(upload.original_filename)} <span>${escapeHtml(upload.category)}</span></strong>
+      <div class="row-item upload-item" data-upload-id="${escapeHtml(upload.id)}">
+        <strong>
+          ${escapeHtml(upload.original_filename)}
+          <span>${escapeHtml(upload.category)}</span>
+          ${uploadReviewBadge(upload)}
+        </strong>
         <span>${escapeHtml(upload.relative_path)} / ${escapeHtml(formatBytes(upload.size_bytes))}</span>
-        <small>${escapeHtml(upload.description || `suggested ${upload.suggested_category} (${Math.round((upload.confidence || 0) * 100)}%)`)}</small>
+        <small>${escapeHtml(uploadFieldSummary(upload) || upload.description || `suggested ${upload.suggested_category} (${Math.round((upload.confidence || 0) * 100)}%)`)}</small>
+        ${upload.extracted_text_preview ? `<details><summary>Text preview</summary><p>${escapeHtml(upload.extracted_text_preview)}</p></details>` : ''}
+        <div class="upload-actions">
+          <button class="mini-button" type="button" data-upload-action="download" data-upload-id="${escapeHtml(upload.id)}" data-upload-filename="${escapeHtml(upload.original_filename)}">Download</button>
+          <button class="mini-button" type="button" data-upload-action="reclassify" data-upload-id="${escapeHtml(upload.id)}">Reclassify</button>
+          ${upload.needs_review ? `<button class="mini-button" type="button" data-upload-action="reviewed" data-upload-id="${escapeHtml(upload.id)}">Reviewed</button>` : ''}
+          <button class="mini-button danger-button" type="button" data-upload-action="delete" data-upload-id="${escapeHtml(upload.id)}" data-upload-filename="${escapeHtml(upload.original_filename)}">Delete</button>
+        </div>
       </div>
     `).join('');
     if (!uploads.length) renderEmpty(elements.uploads, 'No uploads yet.');
   } catch (error) {
     renderEmpty(elements.uploads, error.message);
   }
+}
+
+function clearUploadFilters() {
+  elements.uploadSearch.value = '';
+  elements.uploadFilterCategory.value = '';
+  elements.uploadReviewFilter.value = '';
+  loadUploads();
+}
+
+function handleUploadPanelClick(event) {
+  const button = event.target.closest('[data-upload-action]');
+  if (!button) return;
+  const uploadId = button.dataset.uploadId;
+  const filename = button.dataset.uploadFilename || 'upload';
+  if (button.dataset.uploadAction === 'download') downloadUpload(uploadId, filename);
+  if (button.dataset.uploadAction === 'reclassify') reclassifyUpload(uploadId);
+  if (button.dataset.uploadAction === 'reviewed') markUploadReviewed(uploadId);
+  if (button.dataset.uploadAction === 'delete') deleteUpload(uploadId, filename);
 }
 
 async function loadTools() {
@@ -1386,8 +1500,14 @@ $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
 elements.uploadForm.addEventListener('submit', uploadLocalFile);
+elements.uploadFilterForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  loadUploads();
+});
 elements.uploadFile.addEventListener('change', suggestUploadCategory);
 $('uploadsButton').addEventListener('click', loadUploads);
+$('uploadClearFiltersButton').addEventListener('click', clearUploadFilters);
+elements.uploads.addEventListener('click', handleUploadPanelClick);
 elements.draftJobForm.addEventListener('submit', queueDraftJob);
 $('draftExampleButton').addEventListener('click', fillDraftExample);
 $('resetCostButton').addEventListener('click', resetSessionCost);

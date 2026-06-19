@@ -131,7 +131,19 @@ files. O.P.E. suggests a category from the filename/content type, but the UI can
 override it. Files are stored under
 `$OPE_UPLOAD_ROOT/<project>/<category>/<year>/<month>/`, with sanitized names,
 SHA-256 hashes, and a local JSONL manifest. Octoputer mounts this at
-`/data/ope/uploads` on the `ope-uploads` PVC.
+`/data/ope/uploads` on the `ope-uploads` PVC. Upload records also keep local
+metadata extracted from text/PDF/image inputs when available: vendor/title,
+date, amount, reference/account hints, extraction method, a short text preview,
+and a `needs_review` flag. PDF extraction uses `pdftotext` when installed;
+image OCR uses `tesseract` when installed. Without those local tools, O.P.E.
+still stores the file and marks uncertain uploads for review.
+
+Useful upload routes:
+
+- `GET /uploads?query=...&category=...&needs_review=true`
+- `PATCH /uploads/{id}` to reclassify, edit notes, or mark reviewed
+- `GET /uploads/{id}/file` for authenticated download
+- `DELETE /uploads/{id}` to remove the local file and manifest entry
 
 `/connectors` exposes O.P.E.'s connector catalog for GitHub, Google Drive, and
 Gmail without returning secret values. Connector actions are converted into

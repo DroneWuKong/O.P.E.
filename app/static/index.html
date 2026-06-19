@@ -311,6 +311,44 @@
               <span id="uploadSuggestionText" class="empty">Pick a file and O.P.E. will suggest where it belongs.</span>
             </div>
           </form>
+          <form id="uploadFilterForm" class="panel-form upload-filter-form">
+            <div class="upload-grid">
+              <label class="field">
+                <span>Search files</span>
+                <input id="uploadSearchInput" type="search" placeholder="Vendor, amount, filename..." />
+              </label>
+              <label class="field">
+                <span>Category</span>
+                <select id="uploadFilterCategoryInput">
+                  <option value="">All</option>
+                  <option value="receipts">Receipts</option>
+                  <option value="bills">Bills</option>
+                  <option value="invoices">Invoices</option>
+                  <option value="statements">Statements</option>
+                  <option value="taxes">Taxes</option>
+                  <option value="medical">Medical</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="warranties">Warranties</option>
+                  <option value="home">Home</option>
+                  <option value="vehicle">Vehicle</option>
+                  <option value="banking">Banking</option>
+                  <option value="inbox">Inbox</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Review</span>
+                <select id="uploadReviewFilterInput">
+                  <option value="">All</option>
+                  <option value="true">Needs review</option>
+                  <option value="false">Reviewed</option>
+                </select>
+              </label>
+            </div>
+            <div class="draft-job-actions">
+              <button class="mini-button" type="submit">Filter</button>
+              <button class="mini-button" id="uploadClearFiltersButton" type="button">Clear</button>
+            </div>
+          </form>
           <div id="uploadsPanel" class="data-table"></div>
         </div>
 
