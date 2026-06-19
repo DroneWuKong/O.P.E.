@@ -45,6 +45,7 @@
               <h2>Session</h2>
               <div class="answer-tools">
                 <div class="metrics" id="answerMetrics"></div>
+                <button class="mini-button" id="exportChatButton" type="button">Export</button>
                 <button class="mini-button" id="clearChatButton" type="button">Clear chat</button>
               </div>
             </div>
@@ -71,6 +72,7 @@
               <button type="button" data-prompt="Explain the next practical step for this project.">Next step</button>
               <button type="button" data-prompt="What did we just change, in plain language?">Plain recap</button>
             </div>
+            <div class="request-preview" id="requestPreview" aria-live="polite"></div>
             <label class="field composer-field">
               <span>Message</span>
               <textarea id="queryInput" rows="3" placeholder="Ask O.P.E. what it can do right now..."></textarea>
@@ -78,6 +80,7 @@
 
             <div class="action-row">
               <button class="primary-button" id="askButton" type="submit">Send</button>
+              <button class="secondary-button" id="retryButton" type="button">Retry Last</button>
               <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
               <span id="requestState" class="request-state">Idle</span>
             </div>

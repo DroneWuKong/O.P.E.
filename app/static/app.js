@@ -34,6 +34,7 @@ const elements = {
   tools: $('toolsInput'),
   approval: $('approvalInput'),
   requestState: $('requestState'),
+  requestPreview: $('requestPreview'),
   answer: $('answerOutput'),
   answerMetrics: $('answerMetrics'),
   messageCost: $('messageCost'),
@@ -162,6 +163,25 @@ function populateRouteOptions(routes = defaultRouteOptions) {
   ];
   elements.mode.innerHTML = options.join('');
   elements.mode.value = [...elements.mode.options].some((option) => option.value === selected) ? selected : 'auto';
+  renderRequestPreview();
+}
+
+function selectedRouteText() {
+  return elements.mode.selectedOptions[0]?.textContent?.trim() || 'Auto route';
+}
+
+function renderRequestPreview() {
+  if (!elements.requestPreview) return;
+  const chips = [
+    { label: 'Route', value: selectedRouteText() },
+    { label: 'Budget', value: routeLabel(elements.budget.value) },
+    { label: 'Latency', value: routeLabel(elements.latency.value) },
+    { label: 'Search', value: elements.search.checked ? 'on' : 'off' },
+    { label: 'Tools', value: elements.tools.checked ? 'on' : 'off' },
+  ];
+  elements.requestPreview.innerHTML = chips.map((chip) => `
+    <span><b>${escapeHtml(chip.label)}</b>${escapeHtml(chip.value)}</span>
+  `).join('');
 }
 
 function saveChatMessages() {
@@ -190,6 +210,9 @@ function renderChat() {
     const copyButton = message.role !== 'user' && message.status !== 'pending'
       ? `<button class="copy-button" type="button" data-copy-message="${escapeHtml(message.id)}">Copy</button>`
       : '';
+    const useButton = message.role === 'user'
+      ? `<button class="copy-button" type="button" data-use-message="${escapeHtml(message.id)}">Use</button>`
+      : '';
     return `
       <article class="chat-message ${escapeHtml(message.role)} ${message.status === 'pending' ? 'pending' : ''}">
         <div class="chat-message-head">
@@ -197,6 +220,7 @@ function renderChat() {
           <div>
             ${meta ? `<span>${escapeHtml(meta)}</span>` : ''}
             ${copyButton}
+            ${useButton}
           </div>
         </div>
         <div class="chat-message-body">${escapeHtml(message.content)}</div>
@@ -234,6 +258,54 @@ function clearChatMessages() {
   renderChat();
   renderMetrics([]);
   setBusy('Idle');
+}
+
+function lastUserMessage() {
+  return [...state.chatMessages].reverse().find((message) => message.role === 'user');
+}
+
+function setComposerValue(value) {
+  elements.query.value = value || '';
+  autosizeComposer();
+  elements.query.focus();
+}
+
+function sessionMarkdown() {
+  const lines = [
+    '# O.P.E. Session',
+    '',
+    `Exported: ${new Date().toISOString()}`,
+    `Project: ${elements.project.value.trim() || 'ope-core'}`,
+    `Messages: ${state.chatMessages.length}`,
+    `Estimated session cost: ${formatUsd(state.sessionTotals.costUsd)}`,
+    `Session tokens: ${state.sessionTotals.totalTokens.toLocaleString()}`,
+    '',
+  ];
+  state.chatMessages.forEach((message) => {
+    const label = message.role === 'assistant' ? 'O.P.E.' : message.role === 'user' ? 'You' : 'System';
+    lines.push(`## ${label}`);
+    const meta = chatMessageMeta(message);
+    if (meta) lines.push(`_${meta}_`, '');
+    lines.push(message.content || '', '');
+  });
+  return lines.join('\n');
+}
+
+function exportChat() {
+  if (!state.chatMessages.length) {
+    setBusy('Nothing to export');
+    return;
+  }
+  const blob = new Blob([sessionMarkdown()], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `ope-session-${new Date().toISOString().replace(/[:.]/g, '-')}.md`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  setBusy('Exported');
 }
 
 function formatUsd(value) {
@@ -347,6 +419,10 @@ async function checkStatus() {
 
 async function submitAsk(event) {
   event.preventDefault();
+  await sendCurrentPrompt();
+}
+
+async function sendCurrentPrompt() {
   const body = requestBody();
   if (!hasApiKey()) {
     setBusy('Need key');
@@ -400,6 +476,16 @@ async function submitAsk(event) {
     });
     setBusy('Failed');
   }
+}
+
+function retryLastPrompt() {
+  const message = lastUserMessage();
+  if (!message) {
+    setBusy('No prior prompt');
+    return;
+  }
+  setComposerValue(message.content);
+  $('askForm').requestSubmit();
 }
 
 async function previewPlan() {
@@ -609,9 +695,7 @@ function autosizeComposer() {
 }
 
 function fillPrompt(prompt) {
-  elements.query.value = prompt;
-  autosizeComposer();
-  elements.query.focus();
+  setComposerValue(prompt);
 }
 
 async function copyMessage(id) {
@@ -626,6 +710,7 @@ async function copyMessage(id) {
 }
 
 $('askForm').addEventListener('submit', submitAsk);
+$('retryButton').addEventListener('click', retryLastPrompt);
 $('planButton').addEventListener('click', previewPlan);
 $('refreshButton').addEventListener('click', refreshAll);
 $('routesButton').addEventListener('click', loadRoutes);
@@ -636,10 +721,16 @@ $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
 $('resetCostButton').addEventListener('click', resetSessionCost);
 $('clearChatButton').addEventListener('click', clearChatMessages);
+$('exportChatButton').addEventListener('click', exportChat);
 $('forgetKeyButton').addEventListener('click', forgetApiKey);
 elements.answer.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-copy-message]');
-  if (button) copyMessage(button.dataset.copyMessage);
+  const copyButton = event.target.closest('[data-copy-message]');
+  if (copyButton) copyMessage(copyButton.dataset.copyMessage);
+  const useButton = event.target.closest('[data-use-message]');
+  if (useButton) {
+    const message = state.chatMessages.find((item) => item.id === useButton.dataset.useMessage);
+    if (message) setComposerValue(message.content);
+  }
 });
 document.querySelectorAll('[data-prompt]').forEach((button) => {
   button.addEventListener('click', () => fillPrompt(button.dataset.prompt));
@@ -657,14 +748,19 @@ elements.apiKey.addEventListener('change', refreshAll);
 elements.mode.addEventListener('change', () => {
   state.mode = elements.mode.value || 'auto';
   localStorage.setItem('ope.mode', elements.mode.value || 'auto');
+  renderRequestPreview();
 });
 elements.project.addEventListener('change', () => {
   localStorage.setItem('ope.project', elements.project.value.trim() || 'ope-core');
   refreshAll();
 });
+[elements.budget, elements.latency, elements.search, elements.tools, elements.approval].forEach((control) => {
+  control.addEventListener('change', renderRequestPreview);
+});
 
 wireTabs();
 populateRouteOptions();
+renderRequestPreview();
 autosizeComposer();
 renderCost();
 renderChat();

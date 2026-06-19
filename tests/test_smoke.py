@@ -32,6 +32,8 @@ def test_ui_index() -> None:
     assert 'Upper Midwest voice' in response.text
     assert 'Quick prompts' in response.text
     assert 'What can you do?' in response.text
+    assert 'Retry Last' in response.text
+    assert 'Export' in response.text
 
 
 def test_health() -> None:

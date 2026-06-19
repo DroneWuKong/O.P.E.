@@ -268,6 +268,32 @@ h2 {
   outline: none;
 }
 
+.request-preview {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.request-preview span {
+  border: 1px solid rgba(121, 132, 118, 0.18);
+  border-radius: 8px;
+  background: rgba(3, 5, 4, 0.62);
+  color: #c8d0c1;
+  display: grid;
+  gap: 3px;
+  min-height: 46px;
+  padding: 8px 9px;
+  font-size: 0.78rem;
+}
+
+.request-preview b {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -878,6 +904,14 @@ h2 {
   .cost-ledger {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
+  }
+
+  .request-preview {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .request-preview span:first-child {
+    grid-column: 1 / -1;
   }
 
   .cost-ledger div {
