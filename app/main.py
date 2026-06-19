@@ -399,16 +399,25 @@ async def create_tool_job_endpoint(req: ToolJobCreateRequest) -> ToolJob:
 async def tool_jobs(
     project: str | None = None,
     status: ToolJobStatus | None = None,
+    tool_name_prefix: str | None = None,
     limit: int = Query(25, ge=1, le=100),
 ) -> ToolJobsResponse:
     return ToolJobsResponse(
-        jobs=await list_tool_jobs(project=project, status=status, limit=limit)
+        jobs=await list_tool_jobs(
+            project=project,
+            status=status,
+            tool_name_prefix=tool_name_prefix,
+            limit=limit,
+        )
     )
 
 
 @app.get('/tools/queue/stats', response_model=ToolQueueStatsResponse, dependencies=[Depends(require_api_key)])
-async def tool_queue_stats_endpoint(project: str | None = None) -> ToolQueueStatsResponse:
-    return await tool_queue_stats(project=project)
+async def tool_queue_stats_endpoint(
+    project: str | None = None,
+    tool_name_prefix: str | None = None,
+) -> ToolQueueStatsResponse:
+    return await tool_queue_stats(project=project, tool_name_prefix=tool_name_prefix)
 
 
 @app.patch('/tools/jobs/{job_id}', response_model=ToolJob, dependencies=[Depends(require_api_key)])

@@ -336,9 +336,10 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
         assert req.approval_tokens == ['tool_action_approved']
         return job
 
-    async def fake_list(project=None, status=None, limit=25):
+    async def fake_list(project=None, status=None, tool_name_prefix=None, limit=25):
         assert project == 'ope-core'
         assert status == 'pending_review'
+        assert tool_name_prefix == 'connector:'
         assert limit == 5
         return [job]
 
@@ -363,7 +364,7 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
             'approval_tokens': ['tool_action_approved'],
         },
     )
-    list_response = client.get('/tools/jobs?project=ope-core&status=pending_review&limit=5')
+    list_response = client.get('/tools/jobs?project=ope-core&status=pending_review&tool_name_prefix=connector:&limit=5')
     update_response = client.patch('/tools/jobs/job-1', json={'status': 'approved', 'approved_by': 'operator'})
     reject_response = client.patch('/tools/jobs/job-1', json={'status': 'cancelled', 'approved_by': 'operator'})
     retry_response = client.patch(
@@ -385,10 +386,12 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
 
 
 def test_tool_queue_stats(monkeypatch) -> None:
-    async def fake_stats(project=None):
+    async def fake_stats(project=None, tool_name_prefix=None):
         assert project == 'ope-core'
+        assert tool_name_prefix is None
         return ToolQueueStatsResponse(
             project=project,
+            tool_name_prefix=tool_name_prefix,
             total=4,
             by_status={'approved': 2, 'running': 1, 'failed': 1},
             running=1,

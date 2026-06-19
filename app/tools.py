@@ -79,6 +79,7 @@ async def list_tool_jobs(
     *,
     project: str | None = None,
     status: str | None = None,
+    tool_name_prefix: str | None = None,
     limit: int = 25,
 ) -> list[ToolJob]:
     pool = get_memory_pool()
@@ -91,17 +92,23 @@ async def list_tool_jobs(
             FROM tool_jobs
             WHERE ($1::text IS NULL OR project_id = $1)
               AND ($2::text IS NULL OR status = $2)
+              AND ($3::text IS NULL OR tool_name LIKE $3 || '%')
             ORDER BY created_at DESC
-            LIMIT $3
+            LIMIT $4
             """,
             project,
             status,
+            tool_name_prefix,
             limit,
         )
     return [_row_to_tool_job(row) for row in rows]
 
 
-async def tool_queue_stats(*, project: str | None = None) -> ToolQueueStatsResponse:
+async def tool_queue_stats(
+    *,
+    project: str | None = None,
+    tool_name_prefix: str | None = None,
+) -> ToolQueueStatsResponse:
     pool = get_memory_pool()
     async with pool.acquire() as conn:
         by_status_rows = await conn.fetch(
@@ -109,10 +116,12 @@ async def tool_queue_stats(*, project: str | None = None) -> ToolQueueStatsRespo
             SELECT status, count(*) AS count
             FROM tool_jobs
             WHERE ($1::text IS NULL OR project_id = $1)
+              AND ($2::text IS NULL OR tool_name LIKE $2 || '%')
             GROUP BY status
             ORDER BY status ASC
             """,
             project,
+            tool_name_prefix,
         )
         summary = await conn.fetchrow(
             """
@@ -127,13 +136,16 @@ async def tool_queue_stats(*, project: str | None = None) -> ToolQueueStatsRespo
               max(updated_at) AS newest_updated_at
             FROM tool_jobs
             WHERE ($1::text IS NULL OR project_id = $1)
+              AND ($2::text IS NULL OR tool_name LIKE $2 || '%')
             """,
             project,
+            tool_name_prefix,
         )
 
     by_status = {row['status']: row['count'] for row in by_status_rows}
     return ToolQueueStatsResponse(
         project=project,
+        tool_name_prefix=tool_name_prefix,
         total=sum(by_status.values()),
         by_status=by_status,
         running=summary['running'] or 0,

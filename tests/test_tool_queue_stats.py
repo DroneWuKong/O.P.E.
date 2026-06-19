@@ -27,17 +27,17 @@ class FakePool:
 
 class FakeConn:
     def __init__(self) -> None:
-        self.project_args: list[str | None] = []
+        self.args: list[tuple[str | None, str | None]] = []
 
-    async def fetch(self, query, project):
-        self.project_args.append(project)
+    async def fetch(self, query, project, tool_name_prefix):
+        self.args.append((project, tool_name_prefix))
         return [
             {'status': 'approved', 'count': 2},
             {'status': 'running', 'count': 1},
         ]
 
-    async def fetchrow(self, query, project):
-        self.project_args.append(project)
+    async def fetchrow(self, query, project, tool_name_prefix):
+        self.args.append((project, tool_name_prefix))
         return {
             'running': 1,
             'expired_leases': 1,
@@ -79,10 +79,11 @@ async def test_tool_queue_stats_aggregates_status_and_leases(monkeypatch) -> Non
     conn = FakeConn()
     monkeypatch.setattr(tools, 'get_memory_pool', lambda: FakePool(conn))
 
-    stats = await tools.tool_queue_stats(project='ope-core')
+    stats = await tools.tool_queue_stats(project='ope-core', tool_name_prefix='connector:')
 
-    assert conn.project_args == ['ope-core', 'ope-core']
+    assert conn.args == [('ope-core', 'connector:'), ('ope-core', 'connector:')]
     assert stats.project == 'ope-core'
+    assert stats.tool_name_prefix == 'connector:'
     assert stats.total == 3
     assert stats.by_status == {'approved': 2, 'running': 1}
     assert stats.running == 1

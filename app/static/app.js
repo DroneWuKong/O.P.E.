@@ -1026,9 +1026,12 @@ async function loadApprovals() {
   if (!requireApiKey(elements.approvals)) return;
   try {
     const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
+    const connectorPrefix = encodeURIComponent('connector:');
     const [stats, responses] = await Promise.all([
-      api(`/tools/queue/stats?project=${project}`),
-      Promise.all(approvalStatuses().map((status) => api(`/tools/jobs?project=${project}&status=${status}&limit=25`))),
+      api(`/tools/queue/stats?project=${project}&tool_name_prefix=${connectorPrefix}`),
+      Promise.all(approvalStatuses().map(
+        (status) => api(`/tools/jobs?project=${project}&status=${status}&tool_name_prefix=${connectorPrefix}&limit=25`)
+      )),
     ]);
     renderQueueStats(stats);
     const jobs = responses.flatMap((data) => data.jobs || [])

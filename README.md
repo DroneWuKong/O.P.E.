@@ -166,7 +166,10 @@ only; O.P.E. does not execute commands yet. Workers can atomically claim approve
 jobs with a lease and refresh that lease with heartbeat calls.
 
 `/tools/queue/stats` summarizes backlog, running jobs, expired leases, and the
-oldest waiting jobs for operator dashboards or deployment smoke checks.
+oldest waiting jobs for operator dashboards or deployment smoke checks. Both
+`/tools/jobs` and `/tools/queue/stats` accept `tool_name_prefix`; the Approval
+Inbox uses `tool_name_prefix=connector:` so its counts and rows stay connector
+scoped.
 
 The included `app.tool_runner` process is intentionally narrow: it executes
 `noop` jobs, approved allowlisted connector read jobs, and O.P.E.-local draft

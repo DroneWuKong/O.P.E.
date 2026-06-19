@@ -234,6 +234,7 @@ class ToolJobsResponse(BaseModel):
 
 class ToolQueueStatsResponse(BaseModel):
     project: str | None = None
+    tool_name_prefix: str | None = None
     total: int = 0
     by_status: dict[str, int] = Field(default_factory=dict)
     running: int = 0
