@@ -215,13 +215,103 @@ def _gmail_read_thread(payload: dict[str, Any]) -> dict:
     return {'ok': True, 'thread': data}
 
 
+def _local_draft_result(
+    *,
+    connector: str,
+    draft_type: str,
+    target: dict[str, Any],
+    title: str | None = None,
+    subject: str | None = None,
+    body: str,
+    next_steps: list[str],
+) -> dict:
+    return {
+        'ok': True,
+        'external_side_effect': False,
+        'draft': {
+            'connector': connector,
+            'draft_type': draft_type,
+            'target': target,
+            'title': title,
+            'subject': subject,
+            'body': body,
+            'next_steps': next_steps,
+        },
+    }
+
+
+def _github_draft_issue(payload: dict[str, Any]) -> dict:
+    owner = str(payload.get('owner') or '').strip()
+    repo = str(payload.get('repo') or '').strip()
+    title = str(payload.get('title') or '').strip()
+    body = str(payload.get('body') or '').strip()
+    if not owner or not repo or not title or not body:
+        raise ValueError('owner, repo, title, and body are required')
+
+    return _local_draft_result(
+        connector='github',
+        draft_type='issue',
+        target={'owner': owner, 'repo': repo, 'labels': payload.get('labels') or []},
+        title=title,
+        body=body,
+        next_steps=[
+            'Review the issue title and body in O.P.E.',
+            'Create the GitHub issue manually or queue a future external-write action.',
+        ],
+    )
+
+
+def _drive_draft_doc_update(payload: dict[str, Any]) -> dict:
+    file_id = str(payload.get('file_id') or '').strip()
+    title = str(payload.get('title') or payload.get('document_name') or 'Google Doc update draft').strip()
+    body = str(payload.get('body') or payload.get('content') or '').strip()
+    if not file_id or not body:
+        raise ValueError('file_id and body/content are required')
+
+    return _local_draft_result(
+        connector='google_drive',
+        draft_type='doc_update',
+        target={'file_id': file_id, 'section': payload.get('section')},
+        title=title,
+        body=body,
+        next_steps=[
+            'Review the proposed document update in O.P.E.',
+            'Apply it manually or queue a future external-write action after provider writes are enabled.',
+        ],
+    )
+
+
+def _gmail_draft_reply(payload: dict[str, Any]) -> dict:
+    thread_id = str(payload.get('thread_id') or '').strip()
+    to = str(payload.get('to') or '').strip()
+    subject = str(payload.get('subject') or '').strip()
+    body = str(payload.get('body') or '').strip()
+    if not subject or not body:
+        raise ValueError('subject and body are required')
+
+    return _local_draft_result(
+        connector='gmail',
+        draft_type='reply',
+        target={'thread_id': thread_id or None, 'to': to or None},
+        subject=subject,
+        body=body,
+        next_steps=[
+            'Review the reply in O.P.E.',
+            'Copy it into Gmail manually or queue a future provider-draft action after OAuth is enabled.',
+        ],
+    )
+
+
 CONNECTOR_ACTIONS = {
     ('github', 'search_repos'): _github_search_repos,
     ('github', 'read_file'): _github_read_file,
+    ('github', 'draft_issue'): _github_draft_issue,
     ('google_drive', 'search_files'): _drive_search_files,
     ('google_drive', 'read_document'): _drive_read_document,
+    ('google_drive', 'draft_doc_update'): _drive_draft_doc_update,
     ('gmail', 'search_mail'): _gmail_search_mail,
     ('gmail', 'read_thread'): _gmail_read_thread,
+    ('gmail', 'draft_reply'): _gmail_draft_reply,
 }
 
 

@@ -38,6 +38,8 @@ def test_ui_index() -> None:
     assert 'New chat' in response.text
     assert 'sessionPanel' in response.text
     assert 'Connectors' in response.text
+    assert 'Approval Inbox' in response.text
+    assert 'approvalsPanel' in response.text
 
 
 def test_health() -> None:
@@ -107,6 +109,16 @@ def test_connectors_catalog() -> None:
     assert connectors['google_drive']['auth_type'] == 'oauth_or_service_account'
     assert connectors['gmail']['status'] == 'disabled'
     assert any(action['name'] == 'search_repos' for action in connectors['github']['actions'])
+    github_actions = {action['name']: action for action in connectors['github']['actions']}
+    drive_actions = {action['name']: action for action in connectors['google_drive']['actions']}
+    gmail_actions = {action['name']: action for action in connectors['gmail']['actions']}
+    assert github_actions['draft_issue']['kind'] == 'local_draft'
+    assert github_actions['draft_issue']['external_write'] is False
+    assert drive_actions['draft_doc_update']['kind'] == 'local_draft'
+    assert drive_actions['draft_doc_update']['external_write'] is False
+    assert gmail_actions['draft_reply']['kind'] == 'local_draft'
+    assert gmail_actions['draft_reply']['external_write'] is False
+    assert github_actions['create_issue']['external_write'] is True
 
 
 def test_connector_job_requires_approval() -> None:
@@ -329,6 +341,7 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     )
     list_response = client.get('/tools/jobs?project=ope-core&status=pending_review&limit=5')
     update_response = client.patch('/tools/jobs/job-1', json={'status': 'approved', 'approved_by': 'operator'})
+    reject_response = client.patch('/tools/jobs/job-1', json={'status': 'cancelled', 'approved_by': 'operator'})
 
     assert create_response.status_code == 200
     assert create_response.json()['id'] == 'job-1'
@@ -336,6 +349,8 @@ def test_create_list_and_update_tool_jobs(monkeypatch) -> None:
     assert list_response.json()['jobs'][0]['id'] == 'job-1'
     assert update_response.status_code == 200
     assert update_response.json()['status'] == 'approved'
+    assert reject_response.status_code == 200
+    assert reject_response.json()['status'] == 'cancelled'
 
 
 def test_tool_queue_stats(monkeypatch) -> None:

@@ -138,10 +138,18 @@ The connector worker currently allowlists read-only actions:
 - Google Drive: `search_files`, `read_document`
 - Gmail: `search_mail`, `read_thread` only when `GMAIL_ENABLED=true`
 
-Write/send actions remain cataloged for planning but are not executable by the
-worker yet. Configure `OPE_GITHUB_TOKEN`, `GOOGLE_ACCESS_TOKEN`, or
-`GMAIL_ACCESS_TOKEN` as GitHub secrets before deploying if you want these actions
-to run on Octoputer.
+The worker also allowlists O.P.E.-local draft actions:
+
+- GitHub: `draft_issue`
+- Google Drive: `draft_doc_update`
+- Gmail: `draft_reply`
+
+Local draft actions return reviewable draft results with
+`external_side_effect=false`; they do not create Gmail drafts, GitHub issues, or
+Drive edits. Real write/send actions remain cataloged for planning but are not
+executable by the worker yet. Configure `OPE_GITHUB_TOKEN`,
+`GOOGLE_ACCESS_TOKEN`, or `GMAIL_ACCESS_TOKEN` as GitHub secrets before deploying
+if you want read actions to run on Octoputer.
 
 Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
 classified without approval, but `/ask` rejects it until the request includes the
@@ -156,10 +164,10 @@ with heartbeat calls.
 oldest waiting jobs for operator dashboards or deployment smoke checks.
 
 The included `app.tool_runner` process is intentionally narrow: it executes
-`noop` jobs and approved allowlisted connector jobs, then marks all other tools
-failed. The Kubernetes deployment runs one replica by default so approved
-connector jobs can complete, but the worker still cannot execute shell commands
-or arbitrary tools.
+`noop` jobs, approved allowlisted connector read jobs, and O.P.E.-local draft
+jobs, then marks all other tools failed. The Kubernetes deployment runs one
+replica by default so approved connector jobs can complete, but the worker still
+cannot execute shell commands, provider writes, sends, or arbitrary tools.
 
 ## Smoke tests
 

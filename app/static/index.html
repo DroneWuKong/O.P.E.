@@ -171,6 +171,7 @@
         <p class="section-label">Operations</p>
         <div class="tab-buttons" role="tablist">
           <button class="tab-button active" type="button" data-tab="events">Events</button>
+          <button class="tab-button" type="button" data-tab="approvals">Approvals</button>
           <button class="tab-button" type="button" data-tab="memory">Memory</button>
           <button class="tab-button" type="button" data-tab="connectors">Connectors</button>
           <button class="tab-button" type="button" data-tab="tools">Tools</button>
@@ -182,6 +183,20 @@
             <button class="mini-button" id="eventsButton" type="button">Refresh</button>
           </div>
           <div id="eventsPanel" class="data-table"></div>
+        </div>
+
+        <div class="tab-panel" id="approvalsTab">
+          <div class="panel-head">
+            <h2>Approval Inbox</h2>
+            <button class="mini-button" id="approvalsButton" type="button">Refresh</button>
+          </div>
+          <div class="filter-row" aria-label="Approval filters">
+            <button class="filter-button active" type="button" data-approval-filter="pending">Pending</button>
+            <button class="filter-button" type="button" data-approval-filter="running">Running</button>
+            <button class="filter-button" type="button" data-approval-filter="done">Done</button>
+            <button class="filter-button" type="button" data-approval-filter="failed">Failed</button>
+          </div>
+          <div id="approvalsPanel" class="data-table"></div>
         </div>
 
         <div class="tab-panel" id="memoryTab">

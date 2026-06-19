@@ -22,6 +22,7 @@ ToolJobStatus = Literal[
 
 ConnectorId = Literal['github', 'google_drive', 'gmail']
 ConnectorStatus = Literal['configured', 'needs_auth', 'disabled']
+ConnectorActionKind = Literal['read', 'local_draft', 'external_write']
 
 
 class AskRequest(BaseModel):
@@ -87,6 +88,8 @@ class ConnectorAction(BaseModel):
     description: str
     read_only: bool = True
     requires_approval: bool = True
+    kind: ConnectorActionKind = 'read'
+    external_write: bool = False
 
 
 class ConnectorSpec(BaseModel):

@@ -970,6 +970,7 @@ h2 {
 
 .tab-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -998,6 +999,113 @@ h2 {
 
 .tab-panel.active {
   display: block;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.filter-button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(6, 9, 7, 0.78);
+  color: var(--muted);
+  padding: 0 12px;
+  font-weight: 900;
+}
+
+.filter-button.active {
+  border-color: var(--signal-line);
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+.approval-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(6, 9, 7, 0.74);
+  overflow: hidden;
+}
+
+.approval-item summary {
+  align-items: center;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  list-style: none;
+  padding: 12px;
+}
+
+.approval-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.approval-item strong {
+  color: var(--ink);
+  display: block;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.approval-item small {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.approval-item.pending_review {
+  border-color: rgba(215, 148, 77, 0.36);
+}
+
+.approval-item.running {
+  border-color: rgba(36, 211, 107, 0.28);
+}
+
+.approval-item.failed,
+.approval-item.cancelled {
+  border-color: rgba(186, 107, 69, 0.42);
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.approval-body {
+  border-top: 1px solid rgba(121, 132, 118, 0.16);
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.approval-body label {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.approval-body pre {
+  overflow: auto;
+  max-height: 260px;
+  margin: 0;
+  border: 1px solid rgba(121, 132, 118, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.36);
+  color: #f6eedf;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .split-panel {
@@ -1238,6 +1346,20 @@ h2 {
   .answer-tools .metrics,
   .answer-tools .mini-button {
     width: 100%;
+  }
+
+  .approval-item summary {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-actions {
+    justify-content: stretch;
+  }
+
+  .approval-actions .mini-button,
+  .filter-button {
+    width: auto;
+    flex: 1 1 auto;
   }
 
   .chat-message.user,

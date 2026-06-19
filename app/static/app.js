@@ -91,6 +91,7 @@ const elements = {
   health: $('healthStatus'),
   ready: $('readyStatus'),
   sessions: $('sessionPanel'),
+  approvals: $('approvalsPanel'),
   routes: $('routePanel'),
   models: $('modelsPanel'),
   events: $('eventsPanel'),
@@ -98,6 +99,8 @@ const elements = {
   connectors: $('connectorsPanel'),
   toolsPanel: $('toolsPanel'),
 };
+
+let approvalFilter = 'pending';
 
 elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
@@ -823,6 +826,133 @@ async function loadTools() {
   }
 }
 
+function approvalStatuses() {
+  return {
+    pending: ['pending_review'],
+    running: ['approved', 'running'],
+    done: ['succeeded'],
+    failed: ['failed', 'cancelled'],
+  }[approvalFilter] || ['pending_review'];
+}
+
+function jobConnector(job = {}) {
+  return String(job.tool_name || '').startsWith('connector:')
+    ? job.tool_name.split(':')[1]
+    : job.tool_name || 'tool';
+}
+
+function jobRisk(job = {}) {
+  const result = job.result?.result || job.result || {};
+  const externalSideEffect = result.external_side_effect ?? result.draft?.external_side_effect;
+  if (externalSideEffect === false || String(job.action || '').startsWith('draft_')) return 'local draft';
+  if (job.status === 'pending_review') return 'needs approval';
+  return 'read/action';
+}
+
+function compactJson(value, max = 360) {
+  const text = JSON.stringify(value || {}, null, 2);
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+function jobResultText(job = {}) {
+  if (job.error) return job.error;
+  if (!job.result) return '';
+  return compactJson(job.result, 900);
+}
+
+function renderApprovalActions(job = {}) {
+  const buttons = [];
+  if (job.status === 'pending_review') {
+    buttons.push(`<button class="mini-button" type="button" data-approve-job="${escapeHtml(job.id)}">Approve</button>`);
+    buttons.push(`<button class="mini-button" type="button" data-reject-job="${escapeHtml(job.id)}">Reject</button>`);
+  }
+  if (job.status === 'failed' || job.status === 'cancelled') {
+    buttons.push(`<button class="mini-button" type="button" data-retry-job="${escapeHtml(job.id)}">Retry</button>`);
+  }
+  if (job.result || job.error) {
+    buttons.push(`<button class="mini-button" type="button" data-copy-job="${escapeHtml(job.id)}">Copy result</button>`);
+  }
+  return buttons.join('');
+}
+
+function renderApprovalJobs(jobs = []) {
+  if (!jobs.length) {
+    renderEmpty(elements.approvals, 'No jobs in this lane.');
+    return;
+  }
+  elements.approvals.innerHTML = jobs.map((job) => {
+    const resultText = jobResultText(job);
+    return `
+      <details class="approval-item ${escapeHtml(job.status)}" data-job-row="${escapeHtml(job.id)}">
+        <summary>
+          <span>
+            <strong>${escapeHtml(jobConnector(job))} / ${escapeHtml(job.action)}</strong>
+            <small>${escapeHtml(job.status)} / ${escapeHtml(jobRisk(job))}${job.created_at ? ` / ${escapeHtml(job.created_at)}` : ''}</small>
+          </span>
+          <span class="approval-actions">${renderApprovalActions(job)}</span>
+        </summary>
+        <div class="approval-body">
+          <label>Payload</label>
+          <pre>${escapeHtml(compactJson(job.payload))}</pre>
+          ${resultText ? `<label>${job.error ? 'Error' : 'Result'}</label><pre>${escapeHtml(resultText)}</pre>` : ''}
+        </div>
+      </details>
+    `;
+  }).join('');
+}
+
+async function loadApprovals() {
+  if (!requireApiKey(elements.approvals)) return;
+  try {
+    const project = encodeURIComponent(elements.project.value.trim() || 'ope-core');
+    const responses = await Promise.all(
+      approvalStatuses().map((status) => api(`/tools/jobs?project=${project}&status=${status}&limit=25`))
+    );
+    const jobs = responses.flatMap((data) => data.jobs || [])
+      .filter((job) => String(job.tool_name || '').startsWith('connector:'))
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    renderApprovalJobs(jobs);
+  } catch (error) {
+    renderEmpty(elements.approvals, error.message);
+  }
+}
+
+async function patchJob(jobId, body, busyLabel) {
+  setBusy(busyLabel);
+  try {
+    await api(`/tools/jobs/${encodeURIComponent(jobId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+    await Promise.allSettled([loadApprovals(), loadTools()]);
+    setBusy('Ready');
+  } catch (error) {
+    setBusy('Failed');
+    renderEmpty(elements.approvals, error.message);
+  }
+}
+
+function setApprovalFilter(nextFilter) {
+  approvalFilter = nextFilter;
+  document.querySelectorAll('[data-approval-filter]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.approvalFilter === approvalFilter);
+  });
+  loadApprovals();
+}
+
+async function copyJobResult(jobId) {
+  const row = [...elements.approvals.querySelectorAll('[data-job-row]')]
+    .find((item) => item.dataset.jobRow === jobId);
+  const text = row?.innerText || '';
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    setBusy('Copied');
+  } catch (error) {
+    setBusy('Copy failed');
+  }
+}
+
 function connectorStatusClass(status) {
   if (status === 'configured') return 'ok';
   if (status === 'disabled') return 'warn';
@@ -836,7 +966,7 @@ async function loadConnectors() {
     const connectors = data.connectors || [];
     elements.connectors.innerHTML = connectors.map((connector) => {
       const actions = (connector.actions || []).map((action) => (
-        `${action.name}${action.read_only ? '' : ' *'}`
+        `${action.name} (${action.kind || (action.read_only ? 'read' : 'write')}${action.external_write ? ', external' : ''})`
       )).join(', ');
       return `
         <div class="row-item connector-item ${connectorStatusClass(connector.status)}">
@@ -873,11 +1003,12 @@ async function refreshAll() {
     renderEmpty(elements.routes, 'Enter your OPE API key to load routes.');
     renderEmpty(elements.models, 'Enter your OPE API key to load models.');
     renderEmpty(elements.events, 'Enter your OPE API key to load events.');
+    renderEmpty(elements.approvals, 'Enter your OPE API key to load approvals.');
     renderEmpty(elements.connectors, 'Enter your OPE API key to load connectors.');
     renderEmpty(elements.toolsPanel, 'Enter your OPE API key to load tools.');
     return;
   }
-  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadConnectors(), loadTools()]);
+  await Promise.allSettled([loadRoutes(), loadModels(), loadEvents(), loadApprovals(), loadConnectors(), loadTools()]);
 }
 
 function autosizeComposer() {
@@ -907,6 +1038,7 @@ $('refreshButton').addEventListener('click', refreshAll);
 $('routesButton').addEventListener('click', loadRoutes);
 $('modelsButton').addEventListener('click', loadModels);
 $('eventsButton').addEventListener('click', loadEvents);
+$('approvalsButton').addEventListener('click', loadApprovals);
 $('connectorsButton').addEventListener('click', loadConnectors);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
@@ -921,6 +1053,28 @@ elements.sessions.addEventListener('click', (event) => {
   const sessionButton = event.target.closest('[data-session-id]');
   if (sessionButton) switchSession(sessionButton.dataset.sessionId);
 });
+elements.approvals.addEventListener('click', (event) => {
+  const approveButton = event.target.closest('[data-approve-job]');
+  const rejectButton = event.target.closest('[data-reject-job]');
+  const retryButton = event.target.closest('[data-retry-job]');
+  const copyButton = event.target.closest('[data-copy-job]');
+  if (approveButton) {
+    event.preventDefault();
+    patchJob(approveButton.dataset.approveJob, { status: 'approved', approved_by: 'operator' }, 'Approved');
+  }
+  if (rejectButton) {
+    event.preventDefault();
+    patchJob(rejectButton.dataset.rejectJob, { status: 'cancelled', approved_by: 'operator', error: 'Rejected by operator' }, 'Rejected');
+  }
+  if (retryButton) {
+    event.preventDefault();
+    patchJob(retryButton.dataset.retryJob, { status: 'approved', approved_by: 'operator', error: '' }, 'Retrying');
+  }
+  if (copyButton) {
+    event.preventDefault();
+    copyJobResult(copyButton.dataset.copyJob);
+  }
+});
 elements.answer.addEventListener('click', (event) => {
   const copyButton = event.target.closest('[data-copy-message]');
   if (copyButton) copyMessage(copyButton.dataset.copyMessage);
@@ -932,6 +1086,9 @@ elements.answer.addEventListener('click', (event) => {
 });
 document.querySelectorAll('[data-prompt]').forEach((button) => {
   button.addEventListener('click', () => fillPrompt(button.dataset.prompt));
+});
+document.querySelectorAll('[data-approval-filter]').forEach((button) => {
+  button.addEventListener('click', () => setApprovalFilter(button.dataset.approvalFilter));
 });
 elements.query.addEventListener('input', autosizeComposer);
 elements.query.addEventListener('keydown', (event) => {
