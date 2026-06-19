@@ -226,6 +226,47 @@
             <h2>Connectors</h2>
             <button class="mini-button" id="connectorsButton" type="button">Refresh</button>
           </div>
+          <form id="draftJobForm" class="panel-form draft-job-form">
+            <div class="draft-job-head">
+              <h2>Queue Local Draft</h2>
+              <span>Creates a pending Approval Inbox job</span>
+            </div>
+            <div class="draft-job-grid">
+              <label class="field">
+                <span>Action</span>
+                <select id="draftActionInput">
+                  <option value="github:draft_issue">GitHub issue draft</option>
+                  <option value="gmail:draft_reply">Gmail reply draft</option>
+                  <option value="google_drive:draft_doc_update">Drive doc update draft</option>
+                </select>
+              </label>
+              <label class="field">
+                <span id="draftTargetLabel">Target</span>
+                <input id="draftTargetInput" type="text" placeholder="owner/repo" />
+              </label>
+              <label class="field">
+                <span id="draftTitleLabel">Title</span>
+                <input id="draftTitleInput" type="text" placeholder="Issue title" />
+              </label>
+              <label class="field">
+                <span>Requested by</span>
+                <input id="draftRequestedByInput" type="text" placeholder="operator" />
+              </label>
+            </div>
+            <label class="field">
+              <span id="draftBodyLabel">Body</span>
+              <textarea id="draftBodyInput" placeholder="Draft content for review..."></textarea>
+            </label>
+            <details class="payload-drawer">
+              <summary>Payload preview</summary>
+              <pre id="draftPayloadPreview">{}</pre>
+            </details>
+            <div class="draft-job-actions">
+              <button class="secondary-button" type="submit">Queue draft</button>
+              <button class="mini-button" id="draftExampleButton" type="button">Example</button>
+            </div>
+            <p id="draftJobStatus" class="empty">No draft queued yet.</p>
+          </form>
           <div id="connectorsPanel" class="data-table"></div>
         </div>
 

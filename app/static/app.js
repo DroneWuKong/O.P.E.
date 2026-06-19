@@ -98,9 +98,83 @@ const elements = {
   memory: $('memoryPanel'),
   connectors: $('connectorsPanel'),
   toolsPanel: $('toolsPanel'),
+  draftJobForm: $('draftJobForm'),
+  draftAction: $('draftActionInput'),
+  draftTarget: $('draftTargetInput'),
+  draftTargetLabel: $('draftTargetLabel'),
+  draftTitle: $('draftTitleInput'),
+  draftTitleLabel: $('draftTitleLabel'),
+  draftRequestedBy: $('draftRequestedByInput'),
+  draftBody: $('draftBodyInput'),
+  draftBodyLabel: $('draftBodyLabel'),
+  draftPayloadPreview: $('draftPayloadPreview'),
+  draftJobStatus: $('draftJobStatus'),
 };
 
 let approvalFilter = 'pending';
+
+const draftActionSpecs = {
+  'github:draft_issue': {
+    connector: 'github',
+    action: 'draft_issue',
+    targetLabel: 'Owner / repo',
+    targetPlaceholder: 'DroneWuKong/O.P.E.',
+    titleLabel: 'Issue title',
+    titlePlaceholder: 'Approval Inbox follow-up',
+    bodyLabel: 'Issue body',
+    bodyPlaceholder: 'Describe the change you want queued for review...',
+    example: {
+      target: 'DroneWuKong/O.P.E.',
+      title: 'Tighten connector approval history',
+      body: 'Add a filtered history view for approved and rejected connector jobs.',
+    },
+    buildPayload({ target, title, body }) {
+      const [owner, repo] = target.split('/').map((part) => part.trim());
+      if (!owner || !repo) throw new Error('Use owner/repo for the GitHub target.');
+      return { owner, repo, title, body };
+    },
+  },
+  'gmail:draft_reply': {
+    connector: 'gmail',
+    action: 'draft_reply',
+    targetLabel: 'To or thread',
+    targetPlaceholder: 'person@example.com or thread-id',
+    titleLabel: 'Subject',
+    titlePlaceholder: 'Re: O.P.E. update',
+    bodyLabel: 'Reply body',
+    bodyPlaceholder: 'Write the reply draft for review...',
+    example: {
+      target: 'operator@example.com',
+      title: 'Re: O.P.E. connector approvals',
+      body: 'Hey there, the local draft is ready for review in O.P.E. before anything leaves the system.',
+    },
+    buildPayload({ target, title, body }) {
+      const payload = { subject: title, body };
+      if (target.includes('@')) payload.to = target;
+      else if (target) payload.thread_id = target;
+      return payload;
+    },
+  },
+  'google_drive:draft_doc_update': {
+    connector: 'google_drive',
+    action: 'draft_doc_update',
+    targetLabel: 'File ID',
+    targetPlaceholder: 'Google Doc file id',
+    titleLabel: 'Draft title',
+    titlePlaceholder: 'Deployment notes update',
+    bodyLabel: 'Doc update',
+    bodyPlaceholder: 'Write the proposed document update...',
+    example: {
+      target: 'doc-123',
+      title: 'Connector approvals milestone',
+      body: 'Add notes explaining that local draft jobs require approval and do not mutate Google Drive.',
+    },
+    buildPayload({ target, title, body }) {
+      if (!target) throw new Error('Enter a Google Doc file id.');
+      return { file_id: target, title, body };
+    },
+  },
+};
 
 elements.apiKey.value = state.apiKey;
 elements.project.value = state.project;
@@ -953,6 +1027,88 @@ async function copyJobResult(jobId) {
   }
 }
 
+function selectedDraftSpec() {
+  return draftActionSpecs[elements.draftAction.value] || draftActionSpecs['github:draft_issue'];
+}
+
+function draftFormValues() {
+  return {
+    target: elements.draftTarget.value.trim(),
+    title: elements.draftTitle.value.trim(),
+    body: elements.draftBody.value.trim(),
+  };
+}
+
+function buildDraftPayload() {
+  const spec = selectedDraftSpec();
+  const values = draftFormValues();
+  if (!values.title) throw new Error('Add a title or subject.');
+  if (!values.body) throw new Error('Add draft body content.');
+  return spec.buildPayload(values);
+}
+
+function updateDraftFormLabels() {
+  const spec = selectedDraftSpec();
+  elements.draftTargetLabel.textContent = spec.targetLabel;
+  elements.draftTarget.placeholder = spec.targetPlaceholder;
+  elements.draftTitleLabel.textContent = spec.titleLabel;
+  elements.draftTitle.placeholder = spec.titlePlaceholder;
+  elements.draftBodyLabel.textContent = spec.bodyLabel;
+  elements.draftBody.placeholder = spec.bodyPlaceholder;
+  updateDraftPayloadPreview();
+}
+
+function updateDraftPayloadPreview() {
+  try {
+    elements.draftPayloadPreview.textContent = compactJson(buildDraftPayload(), 900);
+    elements.draftJobStatus.textContent = 'Ready to queue for approval.';
+    elements.draftJobStatus.classList.remove('error-text');
+  } catch (error) {
+    elements.draftPayloadPreview.textContent = compactJson({ pending: error.message }, 900);
+  }
+}
+
+function fillDraftExample() {
+  const spec = selectedDraftSpec();
+  elements.draftTarget.value = spec.example.target;
+  elements.draftTitle.value = spec.example.title;
+  elements.draftBody.value = spec.example.body;
+  updateDraftPayloadPreview();
+}
+
+async function queueDraftJob(event) {
+  event.preventDefault();
+  if (!hasApiKey()) {
+    elements.draftJobStatus.textContent = 'Enter your OPE API key first.';
+    elements.draftJobStatus.classList.add('error-text');
+    return;
+  }
+  const spec = selectedDraftSpec();
+  try {
+    const payload = buildDraftPayload();
+    setBusy('Queueing');
+    const job = await api(`/connectors/${encodeURIComponent(spec.connector)}/jobs`, {
+      method: 'POST',
+      body: JSON.stringify({
+        project: elements.project.value.trim() || 'ope-core',
+        action: spec.action,
+        payload,
+        requested_by: elements.draftRequestedBy.value.trim() || 'operator',
+      }),
+    });
+    elements.draftJobStatus.textContent = `Queued ${job.id} for approval.`;
+    elements.draftJobStatus.classList.remove('error-text');
+    setApprovalFilter('pending');
+    activateOperationsTab('approvals');
+    await Promise.allSettled([loadApprovals(), loadTools()]);
+    setBusy('Queued');
+  } catch (error) {
+    elements.draftJobStatus.textContent = error.message;
+    elements.draftJobStatus.classList.add('error-text');
+    setBusy('Failed');
+  }
+}
+
 function connectorStatusClass(status) {
   if (status === 'configured') return 'ok';
   if (status === 'disabled') return 'warn';
@@ -985,13 +1141,18 @@ async function loadConnectors() {
 
 function wireTabs() {
   document.querySelectorAll('.tab-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      document.querySelectorAll('.tab-button').forEach((item) => item.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach((item) => item.classList.remove('active'));
-      button.classList.add('active');
-      $(`${button.dataset.tab}Tab`).classList.add('active');
-    });
+    button.addEventListener('click', () => activateOperationsTab(button.dataset.tab));
   });
+}
+
+function activateOperationsTab(tabName) {
+  const targetTab = $(`${tabName}Tab`);
+  const targetButton = document.querySelector(`[data-tab="${tabName}"]`);
+  if (!targetTab || !targetButton) return;
+  document.querySelectorAll('.tab-button').forEach((item) => item.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach((item) => item.classList.remove('active'));
+  targetButton.classList.add('active');
+  targetTab.classList.add('active');
 }
 
 async function refreshAll() {
@@ -1043,6 +1204,8 @@ $('connectorsButton').addEventListener('click', loadConnectors);
 $('toolsButton').addEventListener('click', loadTools);
 $('memorySearchForm').addEventListener('submit', searchMemory);
 $('memoryWriteForm').addEventListener('submit', writeMemory);
+elements.draftJobForm.addEventListener('submit', queueDraftJob);
+$('draftExampleButton').addEventListener('click', fillDraftExample);
 $('resetCostButton').addEventListener('click', resetSessionCost);
 $('clearChatButton').addEventListener('click', clearChatMessages);
 $('exportChatButton').addEventListener('click', exportChat);
@@ -1090,6 +1253,10 @@ document.querySelectorAll('[data-prompt]').forEach((button) => {
 document.querySelectorAll('[data-approval-filter]').forEach((button) => {
   button.addEventListener('click', () => setApprovalFilter(button.dataset.approvalFilter));
 });
+elements.draftAction.addEventListener('change', updateDraftFormLabels);
+[elements.draftTarget, elements.draftTitle, elements.draftBody].forEach((input) => {
+  input.addEventListener('input', updateDraftPayloadPreview);
+});
 elements.query.addEventListener('input', autosizeComposer);
 elements.query.addEventListener('keydown', (event) => {
   const desktopSend = window.matchMedia('(min-width: 700px)').matches;
@@ -1120,4 +1287,5 @@ autosizeComposer();
 renderCost();
 renderChat();
 renderSessionList();
+updateDraftFormLabels();
 refreshAll();

@@ -155,10 +155,13 @@ Tool routes are gated by `policies/approval-policy.yaml`. A tool action can be
 classified without approval, but `/ask` rejects it until the request includes the
 matching approval token, currently `tool_action_approved`.
 
-Approved tool-action asks create a `pending_review` tool job. Tool jobs are
-auditable queue records only; O.P.E. does not execute commands yet. Future
-workers can atomically claim approved jobs with a lease and refresh that lease
-with heartbeat calls.
+Approved tool-action asks create a `pending_review` tool job. Connector jobs can
+also be queued directly through the Connectors tab or
+`POST /connectors/{connector_id}/jobs`; they enter the Approval Inbox as
+`pending_review` and do not run until an operator approves them. Tool jobs are
+auditable queue records only; O.P.E. does not execute commands yet. Workers can
+atomically claim approved jobs with a lease and refresh that lease with heartbeat
+calls.
 
 `/tools/queue/stats` summarizes backlog, running jobs, expired leases, and the
 oldest waiting jobs for operator dashboards or deployment smoke checks.

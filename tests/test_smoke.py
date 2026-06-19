@@ -40,6 +40,8 @@ def test_ui_index() -> None:
     assert 'Connectors' in response.text
     assert 'Approval Inbox' in response.text
     assert 'approvalsPanel' in response.text
+    assert 'Queue Local Draft' in response.text
+    assert 'draftJobForm' in response.text
 
 
 def test_health() -> None:
@@ -121,11 +123,29 @@ def test_connectors_catalog() -> None:
     assert github_actions['create_issue']['external_write'] is True
 
 
-def test_connector_job_requires_approval() -> None:
+def test_connector_job_enters_approval_queue(monkeypatch) -> None:
+    async def fake_create(req, query_event_id=None, route='tool_action'):
+        assert query_event_id is None
+        assert route == 'tool_action'
+        assert req.tool_name == 'connector:github'
+        assert req.action == 'search_repos'
+        assert req.approval_tokens == []
+        return ToolJob(
+            id='job-connector-pending',
+            project=req.project,
+            tool_name=req.tool_name,
+            action=req.action,
+            payload=req.payload,
+            requested_by=req.requested_by,
+            status='pending_review',
+        )
+
+    monkeypatch.setattr(main, 'create_tool_job', fake_create)
+
     response = client.post('/connectors/github/jobs', json={'action': 'search_repos'})
 
-    assert response.status_code == 403
-    assert response.json()['detail']['required_approval'] == 'tool_action_approved'
+    assert response.status_code == 200
+    assert response.json()['status'] == 'pending_review'
 
 
 def test_connector_job_creates_tool_job(monkeypatch) -> None:

@@ -890,6 +890,70 @@ h2 {
   line-height: 1.45;
 }
 
+.draft-job-form {
+  margin: 12px 0;
+}
+
+.draft-job-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.draft-job-head h2 {
+  margin: 0;
+}
+
+.draft-job-head span {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.draft-job-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr 1.2fr 0.9fr;
+  gap: 8px;
+}
+
+.payload-drawer {
+  border: 1px solid rgba(121, 132, 118, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.payload-drawer summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.payload-drawer pre {
+  overflow: auto;
+  max-height: 160px;
+  margin: 0;
+  border-top: 1px solid rgba(121, 132, 118, 0.16);
+  color: #f6eedf;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.draft-job-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .route-item {
   padding: 0;
 }
@@ -1135,6 +1199,7 @@ h2 {
 @media (max-width: 980px) {
   .workspace,
   .form-grid,
+  .draft-job-grid,
   .split-panel {
     grid-template-columns: 1fr;
   }

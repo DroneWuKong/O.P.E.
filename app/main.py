@@ -203,14 +203,6 @@ async def create_connector_job(connector_id: ConnectorId, req: ConnectorJobCreat
             status_code=404,
             detail={'error': 'connector_action_not_found', 'connector': connector_id, 'action': req.action},
         )
-    if not tokens_approve_route(req.approval_tokens, 'tool_action'):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                'error': 'approval_required',
-                'required_approval': 'tool_action_approved',
-            },
-        )
     return await create_tool_job(
         ToolJobCreateRequest(
             project=req.project,
