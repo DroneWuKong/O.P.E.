@@ -83,13 +83,36 @@ and readiness probes remain unauthenticated.
 
 ## Tailnet URL
 
-O.P.E. Core is reachable directly through the k3s NodePort:
+O.P.E. Core is reachable directly through the k3s NodePort on worker nodes:
 
 - `http://100.81.235.34:30080`
+- `http://100.77.146.94:30080`
 
 LiteLLM is exposed for operator checks through:
 
 - `http://100.81.235.34:30400`
+- `http://100.77.146.94:30400`
+
+The control-plane laptop (`octo-a`, `100.65.161.67`) advertises its LAN IP to
+k3s, so native NodePort forwarding from that node can hang when the O.P.E. pods
+run on worker tailnet nodes. Old clients may still be pinned to `octo-a`, so it
+uses local systemd TCP bridges instead of user-level `kubectl port-forward`
+services:
+
+- `http://100.65.161.67:30080` -> `http://100.81.235.34:30080`
+- `http://100.65.161.67:30400` -> `http://100.81.235.34:30400`
+
+If those bridges need repair on `octo-a`, run:
+
+```bash
+ops/octo/install-ope-tailnet-bridge.sh
+```
+
+That installer disables the legacy user services `ope-core-forward.service` and
+`ope-litellm-forward.service`, installs `/usr/local/bin/ope-tailnet-bridge.py`,
+and creates persistent system services for both O.P.E. ports. It also inserts a
+narrow NAT bypass for `tailscale0` before k3s NodePort rules so Kubernetes does
+not steal packets meant for the local bridge.
 
 Traefik ingress is installed for the future host routes:
 
