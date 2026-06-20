@@ -111,14 +111,23 @@ ops/octo/install-ope-tailnet-bridge.sh
 
 That installer disables the legacy user services `ope-core-forward.service` and
 `ope-litellm-forward.service`, installs `/usr/local/bin/ope-tailnet-bridge.py`,
-and creates persistent system services for the O.P.E. NodePorts plus an HTTP
-bridge on port `80`. It also inserts a narrow NAT bypass for `tailscale0`
-before k3s NodePort rules so Kubernetes does not steal packets meant for the
-local bridge.
+and creates persistent system services for the O.P.E. NodePorts plus:
+
+- an HTTP bridge on port `80`
+- a loopback-only bridge on `127.0.0.1:18080` for `tailscale serve`
+
+It also inserts a narrow NAT bypass for `tailscale0` before k3s NodePort rules
+so Kubernetes does not steal packets meant for the local bridge, and resets
+`tailscale serve` to publish the tailnet HTTPS hostname against the loopback
+bridge.
 
 An HTTP host route is reachable through the bridged control-plane host route:
 
 - `http://ope.100.65.161.67.sslip.io`
+
+A tailnet HTTPS route is also available through Tailscale Serve:
+
+- `https://octo-a.tail18b45.ts.net`
 
 The worker-node NodePort routes remain the direct supported staging path for Hub
 and other tailnet clients. Protected API calls still require
@@ -129,6 +138,5 @@ and other tailnet clients. Protected API calls still require
 - Create provider environment values as GitHub Actions secrets, not repo files.
 - Create `OPE_API_KEYS` as a GitHub Actions secret.
 - Create Kubernetes secrets from the workflow at deploy time.
-- Add a real HTTPS termination path for the bridged host route.
 - Replace the bridged sslip.io staging host with a real DNS name and certificate.
 - Decide whether O.P.E. should use the existing Octo MinIO for artifacts/log bundles.

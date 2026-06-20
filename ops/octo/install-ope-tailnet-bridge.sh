@@ -75,9 +75,10 @@ PY
 
 install_service() {
   local name="$1"
-  local listen_port="$2"
-  local target_port="$3"
-  local description="$4"
+  local listen_host="$2"
+  local listen_port="$3"
+  local target_port="$4"
+  local description="$5"
 
   sudo tee "/etc/systemd/system/${name}.service" >/dev/null <<UNIT
 [Unit]
@@ -87,11 +88,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-Environment=LISTEN_HOST=${LISTEN_HOST}
+Environment=LISTEN_HOST=${listen_host}
 Environment=LISTEN_PORT=${listen_port}
 Environment=TARGET_HOST=${TARGET_HOST}
 Environment=TARGET_PORT=${target_port}
-ExecStartPre=/bin/sh -c '/usr/sbin/iptables -t nat -C PREROUTING -i tailscale0 -d ${LISTEN_HOST}/32 -p tcp --dport ${listen_port} -j ACCEPT 2>/dev/null || /usr/sbin/iptables -t nat -I PREROUTING 1 -i tailscale0 -d ${LISTEN_HOST}/32 -p tcp --dport ${listen_port} -j ACCEPT'
+ExecStartPre=/bin/sh -c 'if [ "${listen_host}" != "127.0.0.1" ]; then /usr/sbin/iptables -t nat -C PREROUTING -i tailscale0 -d ${listen_host}/32 -p tcp --dport ${listen_port} -j ACCEPT 2>/dev/null || /usr/sbin/iptables -t nat -I PREROUTING 1 -i tailscale0 -d ${listen_host}/32 -p tcp --dport ${listen_port} -j ACCEPT; fi'
 ExecStart=/usr/bin/python3 ${BRIDGE_BIN}
 Restart=always
 RestartSec=3
@@ -115,24 +116,35 @@ disable_stale_services() {
   sudo rm -f /etc/systemd/system/ope-traefik-https-tailnet-bridge.service
 }
 
+configure_tailscale_serve() {
+  sudo tailscale serve reset >/dev/null 2>&1 || true
+  sudo tailscale serve --bg 18080
+}
+
 install_bridge_bin
 disable_legacy_user_forwarders
 disable_stale_services
-install_service ope-traefik-http-tailnet-bridge 80 30080 'OPE HTTP bridge from octo-a to octo-b NodePort'
-install_service ope-tailnet-bridge 30080 30080 'OPE tailnet bridge from octo-a to octo-b NodePort'
-install_service ope-litellm-tailnet-bridge 30400 30400 'OPE LiteLLM tailnet bridge from octo-a to octo-b NodePort'
+install_service ope-traefik-http-tailnet-bridge "${LISTEN_HOST}" 80 30080 'OPE HTTP bridge from octo-a to octo-b NodePort'
+install_service ope-tailnet-bridge "${LISTEN_HOST}" 30080 30080 'OPE tailnet bridge from octo-a to octo-b NodePort'
+install_service ope-litellm-tailnet-bridge "${LISTEN_HOST}" 30400 30400 'OPE LiteLLM tailnet bridge from octo-a to octo-b NodePort'
+install_service ope-https-loopback-bridge 127.0.0.1 18080 30080 'OPE HTTPS loopback bridge for Tailscale Serve'
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now \
   ope-traefik-http-tailnet-bridge.service \
   ope-tailnet-bridge.service \
-  ope-litellm-tailnet-bridge.service
+  ope-litellm-tailnet-bridge.service \
+  ope-https-loopback-bridge.service
 sudo systemctl restart \
   ope-traefik-http-tailnet-bridge.service \
   ope-tailnet-bridge.service \
-  ope-litellm-tailnet-bridge.service
+  ope-litellm-tailnet-bridge.service \
+  ope-https-loopback-bridge.service
+configure_tailscale_serve
 
 systemctl is-active ope-traefik-http-tailnet-bridge.service
 systemctl is-active ope-tailnet-bridge.service
 systemctl is-active ope-litellm-tailnet-bridge.service
-sudo ss -ltnp '( sport = :80 or sport = :30080 or sport = :30400 )' || true
+systemctl is-active ope-https-loopback-bridge.service
+sudo tailscale serve status
+sudo ss -ltnp '( sport = :80 or sport = :30080 or sport = :30400 or sport = :18080 )' || true
