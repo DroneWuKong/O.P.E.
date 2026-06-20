@@ -110,15 +110,29 @@ disable_legacy_user_forwarders() {
   pkill -u "${USER}" -f 'kubectl -n ope port-forward' 2>/dev/null || true
 }
 
+disable_stale_services() {
+  sudo systemctl disable --now ope-traefik-https-tailnet-bridge.service 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/ope-traefik-https-tailnet-bridge.service
+}
+
 install_bridge_bin
 disable_legacy_user_forwarders
+disable_stale_services
+install_service ope-traefik-http-tailnet-bridge 80 30080 'OPE HTTP bridge from octo-a to octo-b NodePort'
 install_service ope-tailnet-bridge 30080 30080 'OPE tailnet bridge from octo-a to octo-b NodePort'
 install_service ope-litellm-tailnet-bridge 30400 30400 'OPE LiteLLM tailnet bridge from octo-a to octo-b NodePort'
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now ope-tailnet-bridge.service ope-litellm-tailnet-bridge.service
-sudo systemctl restart ope-tailnet-bridge.service ope-litellm-tailnet-bridge.service
+sudo systemctl enable --now \
+  ope-traefik-http-tailnet-bridge.service \
+  ope-tailnet-bridge.service \
+  ope-litellm-tailnet-bridge.service
+sudo systemctl restart \
+  ope-traefik-http-tailnet-bridge.service \
+  ope-tailnet-bridge.service \
+  ope-litellm-tailnet-bridge.service
 
+systemctl is-active ope-traefik-http-tailnet-bridge.service
 systemctl is-active ope-tailnet-bridge.service
 systemctl is-active ope-litellm-tailnet-bridge.service
-sudo ss -ltnp '( sport = :30080 or sport = :30400 )' || true
+sudo ss -ltnp '( sport = :80 or sport = :30080 or sport = :30400 )' || true
