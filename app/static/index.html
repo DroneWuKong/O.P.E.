@@ -3,52 +3,58 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>O.P.E. Chat</title>
+    <title>O.P.E.</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="shell">
-      <header class="topbar">
-        <button class="nav-button" type="button" aria-label="Menu">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <div class="identity">
-          <h1>O.P.E.</h1>
-          <span>/ Octoputer</span>
-        </div>
-        <div class="operator-strip" aria-label="Current operating mode">
-          <span id="voiceBadge">Upper Midwest voice</span>
+    <div class="app-shell">
+      <main class="main-ui">
+        <section class="conversation-stage" aria-live="polite">
+          <div id="answerOutput" class="chat-log"></div>
+        </section>
+
+        <form id="askForm" class="mission-form">
+          <p class="brand-mark">O.P.E.</p>
+          <h1>What needs to get done?</h1>
+          <label class="sr-only" for="queryInput">Mission</label>
+          <textarea id="queryInput" rows="1" placeholder="Enter the mission."></textarea>
+          <div class="primary-actions">
+            <button class="primary-button" id="askButton" type="submit">Execute</button>
+            <button class="secondary-button" id="planButton" type="button">Plan</button>
+            <span id="requestState" class="request-state">Idle</span>
+          </div>
+        </form>
+
+        <footer class="status-footer" aria-label="System status">
+          <span>Memory On</span>
+          <span aria-hidden="true">·</span>
+          <span>Tools On</span>
+          <span aria-hidden="true">·</span>
+          <span id="footerHealth">Healthy</span>
+        </footer>
+        <div hidden>
+          <span id="healthStatus">Health: checking</span>
+          <span id="readyStatus">Ready: checking</span>
           <span id="modelSummary">Models: checking</span>
         </div>
-        <div class="status-row" aria-live="polite">
-          <span class="status-pill" id="healthStatus">Health: checking</span>
-          <span class="status-pill" id="readyStatus">Ready: checking</span>
-        </div>
-      </header>
 
-      <main class="workspace">
-        <section class="command-surface" aria-labelledby="askTitle">
-          <div class="toolbar">
-            <div>
-              <p class="section-label">Runtime</p>
-              <h2 id="askTitle">Chat</h2>
-            </div>
-            <button class="icon-button" id="refreshButton" type="button" title="Refresh status and side panels" aria-label="Refresh">
-              <span aria-hidden="true">R</span>
-            </button>
-          </div>
+        <details class="advanced-shell">
+          <summary>Advanced</summary>
 
-          <section class="answer-panel" aria-live="polite">
-            <div class="answer-head">
-              <h2>Session</h2>
-              <div class="answer-tools">
-                <div class="metrics" id="answerMetrics"></div>
-                <button class="mini-button" id="exportChatButton" type="button">Export</button>
-                <button class="mini-button" id="clearChatButton" type="button">Clear chat</button>
-              </div>
+          <section class="advanced-section">
+            <div class="inline-actions">
+              <button class="secondary-button" id="refreshButton" type="button">Refresh</button>
+              <button class="secondary-button" id="retryButton" type="button">Retry</button>
+              <button class="secondary-button" id="newChatButton" type="button">New Chat</button>
+              <button class="secondary-button" id="deleteChatButton" type="button">Delete Chat</button>
+              <button class="secondary-button" id="exportChatButton" type="button">Export</button>
+              <button class="secondary-button" id="clearChatButton" type="button">Clear</button>
+              <button class="secondary-button" id="resetCostButton" type="button">Reset Cost</button>
             </div>
+
+            <div id="answerMetrics" class="answer-metrics"></div>
+            <div id="requestPreview" class="request-preview"></div>
+
             <div class="cost-ledger" aria-label="Message and session cost">
               <div>
                 <span>Message estimate</span>
@@ -60,307 +66,268 @@
                 <strong id="sessionCost">$0.000000</strong>
                 <small id="sessionTokens">0 messages / 0 tokens</small>
               </div>
-              <button class="mini-button cost-reset" id="resetCostButton" type="button">Reset</button>
             </div>
-            <div id="answerOutput" class="chat-log"></div>
+
+            <div class="form-grid">
+              <label class="field">
+                <span>Project</span>
+                <input id="projectInput" type="text" value="ope-core" />
+              </label>
+              <label class="field">
+                <span>Route</span>
+                <select id="modeInput">
+                  <option value="auto" selected>Auto route</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Budget</span>
+                <select id="budgetInput">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Latency</span>
+                <select id="latencyInput">
+                  <option value="fast">Fast</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="patient">Patient</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="toggle-row">
+              <label><input id="searchInput" type="checkbox" checked /> Search</label>
+              <label><input id="toolsInput" type="checkbox" checked /> Tools</label>
+              <label><input id="approvalInput" type="checkbox" /> Approval token</label>
+            </div>
+
+            <div class="access-row">
+              <label class="field">
+                <span>API key</span>
+                <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
+              </label>
+              <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
+            </div>
           </section>
 
-          <form id="askForm" class="ask-form">
-            <label class="field composer-field">
-              <span>Message</span>
-              <textarea id="queryInput" rows="2" placeholder="Ask O.P.E. what it can do right now..."></textarea>
-            </label>
-
-            <div class="action-row">
-              <button class="primary-button" id="askButton" type="submit">Send</button>
-              <span id="requestState" class="request-state">Idle</span>
-            </div>
-
-            <details class="option-drawer more-drawer">
-              <summary>Options</summary>
-              <div class="drawer-actions">
-                <button class="secondary-button" id="retryButton" type="button">Retry Last</button>
-                <button class="secondary-button" id="planButton" type="button">Preview Plan</button>
-              </div>
-              <div class="prompt-belt" aria-label="Quick prompts">
-                <button type="button" data-prompt="What can you do right now?">What can you do?</button>
-                <button type="button" data-prompt="Check O.P.E. health and tell me what needs attention.">Health check</button>
-                <button type="button" data-prompt="Explain the next practical step for this project.">Next step</button>
-                <button type="button" data-prompt="What did we just change, in plain language?">Plain recap</button>
-              </div>
-              <div class="request-preview" id="requestPreview" aria-live="polite"></div>
-              <div class="form-grid">
-                <label class="field">
-                  <span>Route</span>
-                  <select id="modeInput">
-                    <option value="auto" selected>Auto route</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Project</span>
-                  <input id="projectInput" type="text" value="ope-core" />
-                </label>
-                <label class="field">
-                  <span>Budget</span>
-                  <select id="budgetInput">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Latency</span>
-                  <select id="latencyInput">
-                    <option value="fast">Fast</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="patient">Patient</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="toggle-row">
-                <label><input id="searchInput" type="checkbox" checked /> Search</label>
-                <label><input id="toolsInput" type="checkbox" /> Tools</label>
-                <label><input id="approvalInput" type="checkbox" /> Approval token</label>
-              </div>
-              <div class="access-row">
-                <label class="field">
-                  <span>API key</span>
-                  <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
-                </label>
-                <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
-              </div>
-            </details>
-          </form>
-        </section>
-
-        <aside class="side-rail">
-          <details class="panel rail-drawer" open>
-            <summary>
-              <span>Chats</span>
-              <span class="summary-hint">Local</span>
-            </summary>
-            <div class="session-actions">
-              <button class="mini-button" id="newChatButton" type="button">New chat</button>
-              <button class="mini-button" id="deleteChatButton" type="button">Delete</button>
+          <section class="advanced-section">
+            <div class="section-head">
+              <h2>Sessions</h2>
             </div>
             <div id="sessionPanel" class="session-stack"></div>
-          </details>
+          </section>
 
-          <details class="panel rail-drawer">
-            <summary>
-              <span>Routes</span>
-              <span class="summary-hint">Catalog</span>
-            </summary>
-            <button class="mini-button rail-button" id="routesButton" type="button">Refresh routes</button>
-            <div id="routePanel" class="route-stack"></div>
-          </details>
+          <section class="tabs" aria-label="OPE data panels">
+            <div class="tab-buttons" role="tablist">
+              <button class="tab-button active" type="button" data-tab="routes">Routes</button>
+              <button class="tab-button" type="button" data-tab="providers">Providers</button>
+              <button class="tab-button" type="button" data-tab="events">Events</button>
+              <button class="tab-button" type="button" data-tab="approvals">Approvals</button>
+              <button class="tab-button" type="button" data-tab="memory">Memory</button>
+              <button class="tab-button" type="button" data-tab="files">Files</button>
+              <button class="tab-button" type="button" data-tab="connectors">Connectors</button>
+              <button class="tab-button" type="button" data-tab="tools">Tools</button>
+            </div>
 
-          <details class="panel rail-drawer" open>
-            <summary>
-              <span>Models</span>
-              <span class="summary-hint">Health</span>
-            </summary>
-            <button class="mini-button rail-button" id="modelsButton" type="button">Refresh models</button>
-            <div id="modelsPanel" class="status-list"></div>
-          </details>
-        </aside>
+            <div class="tab-panel active" id="routesTab">
+              <div class="section-head">
+                <h2>Routes</h2>
+                <button class="secondary-button" id="routesButton" type="button">Refresh</button>
+              </div>
+              <div id="routePanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="providersTab">
+              <div class="section-head">
+                <h2>Providers</h2>
+                <button class="secondary-button" id="modelsButton" type="button">Refresh</button>
+              </div>
+              <div id="modelsPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="eventsTab">
+              <div class="section-head">
+                <h2>Events</h2>
+                <button class="secondary-button" id="eventsButton" type="button">Refresh</button>
+              </div>
+              <div id="eventsPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="approvalsTab">
+              <div class="section-head">
+                <h2>Approvals</h2>
+                <button class="secondary-button" id="approvalsButton" type="button">Refresh</button>
+              </div>
+              <div id="approvalStatsPanel" class="approval-stats"></div>
+              <div class="filter-row" aria-label="Approval filters">
+                <button class="filter-button active" type="button" data-approval-filter="pending">Pending</button>
+                <button class="filter-button" type="button" data-approval-filter="running">Running</button>
+                <button class="filter-button" type="button" data-approval-filter="done">Done</button>
+                <button class="filter-button" type="button" data-approval-filter="failed">Failed</button>
+              </div>
+              <div id="approvalsPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="memoryTab">
+              <div class="split-panel">
+                <form id="memorySearchForm" class="panel-form">
+                  <h2>Search Memory</h2>
+                  <label class="field">
+                    <span>Query</span>
+                    <input id="memoryQueryInput" type="text" placeholder="Octoputer, route, deployment..." />
+                  </label>
+                  <button class="secondary-button" type="submit">Search</button>
+                </form>
+                <form id="memoryWriteForm" class="panel-form">
+                  <h2>Write Memory</h2>
+                  <label class="field">
+                    <span>Summary</span>
+                    <input id="memorySummaryInput" type="text" placeholder="Remember that..." />
+                  </label>
+                  <button class="secondary-button" type="submit">Write</button>
+                </form>
+              </div>
+              <div id="memoryPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="filesTab">
+              <div class="section-head">
+                <h2>Files</h2>
+                <button class="secondary-button" id="uploadsButton" type="button">Refresh</button>
+              </div>
+              <div id="uploadStatsPanel" class="upload-stats"></div>
+              <form id="uploadForm" class="panel-form">
+                <div class="form-grid">
+                  <label class="field">
+                    <span>File</span>
+                    <input id="uploadFileInput" type="file" />
+                  </label>
+                  <label class="field">
+                    <span>Category</span>
+                    <select id="uploadCategoryInput">
+                      <option value="">Auto sort</option>
+                      <option value="receipts">Receipt</option>
+                      <option value="bills">Bill</option>
+                      <option value="invoices">Invoice</option>
+                      <option value="statements">Statement</option>
+                      <option value="taxes">Tax</option>
+                      <option value="medical">Medical</option>
+                      <option value="insurance">Insurance</option>
+                      <option value="warranties">Warranty</option>
+                      <option value="home">Home</option>
+                      <option value="vehicle">Vehicle</option>
+                      <option value="banking">Banking</option>
+                      <option value="inbox">Inbox / not sure</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Note</span>
+                    <input id="uploadDescriptionInput" type="text" placeholder="Optional note..." />
+                  </label>
+                </div>
+                <div class="inline-actions">
+                  <button class="secondary-button" type="submit">Upload</button>
+                  <span id="uploadSuggestionText" class="empty">Pick a file and O.P.E. will suggest where it belongs.</span>
+                </div>
+              </form>
+              <form id="uploadFilterForm" class="panel-form">
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Search files</span>
+                    <input id="uploadSearchInput" type="search" placeholder="Vendor, amount, filename..." />
+                  </label>
+                  <label class="field">
+                    <span>Category</span>
+                    <select id="uploadFilterCategoryInput">
+                      <option value="">All</option>
+                      <option value="receipts">Receipts</option>
+                      <option value="bills">Bills</option>
+                      <option value="invoices">Invoices</option>
+                      <option value="statements">Statements</option>
+                      <option value="taxes">Taxes</option>
+                      <option value="medical">Medical</option>
+                      <option value="insurance">Insurance</option>
+                      <option value="warranties">Warranties</option>
+                      <option value="home">Home</option>
+                      <option value="vehicle">Vehicle</option>
+                      <option value="banking">Banking</option>
+                      <option value="inbox">Inbox</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Review</span>
+                    <select id="uploadReviewFilterInput">
+                      <option value="">All</option>
+                      <option value="true">Needs review</option>
+                      <option value="false">Reviewed</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="inline-actions">
+                  <button class="secondary-button" type="submit">Filter</button>
+                  <button class="secondary-button" id="uploadClearFiltersButton" type="button">Clear</button>
+                </div>
+              </form>
+              <div id="uploadsPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="connectorsTab">
+              <div class="section-head">
+                <h2>Connectors</h2>
+                <button class="secondary-button" id="connectorsButton" type="button">Refresh</button>
+              </div>
+              <form id="draftJobForm" class="panel-form">
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Action</span>
+                    <select id="draftActionInput">
+                      <option value="github:draft_issue">GitHub issue draft</option>
+                      <option value="gmail:draft_reply">Gmail reply draft</option>
+                      <option value="google_drive:draft_doc_update">Drive doc update draft</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span id="draftTargetLabel">Target</span>
+                    <input id="draftTargetInput" type="text" placeholder="owner/repo" />
+                  </label>
+                  <label class="field">
+                    <span id="draftTitleLabel">Title</span>
+                    <input id="draftTitleInput" type="text" placeholder="Issue title" />
+                  </label>
+                  <label class="field">
+                    <span>Requested by</span>
+                    <input id="draftRequestedByInput" type="text" placeholder="operator" />
+                  </label>
+                </div>
+                <label class="field">
+                  <span id="draftBodyLabel">Body</span>
+                  <textarea id="draftBodyInput" rows="5" placeholder="Draft content for review..."></textarea>
+                </label>
+                <details class="payload-drawer">
+                  <summary>Payload preview</summary>
+                  <pre id="draftPayloadPreview">{}</pre>
+                </details>
+                <div class="inline-actions">
+                  <button class="secondary-button" type="submit">Queue draft</button>
+                  <button class="secondary-button" id="draftExampleButton" type="button">Example</button>
+                </div>
+                <p id="draftJobStatus" class="empty">No draft queued yet.</p>
+              </form>
+              <div id="connectorsPanel" class="data-table"></div>
+            </div>
+
+            <div class="tab-panel" id="toolsTab">
+              <div class="section-head">
+                <h2>Tools</h2>
+                <button class="secondary-button" id="toolsButton" type="button">Refresh</button>
+              </div>
+              <div id="toolsPanel" class="data-table"></div>
+            </div>
+          </section>
+        </details>
       </main>
-
-      <section class="tabs" aria-label="OPE data panels">
-        <p class="section-label">Operations</p>
-        <div class="tab-buttons" role="tablist">
-          <button class="tab-button active" type="button" data-tab="events">Events</button>
-          <button class="tab-button" type="button" data-tab="approvals">Approvals</button>
-          <button class="tab-button" type="button" data-tab="memory">Memory</button>
-          <button class="tab-button" type="button" data-tab="files">Files</button>
-          <button class="tab-button" type="button" data-tab="connectors">Connectors</button>
-          <button class="tab-button" type="button" data-tab="tools">Tools</button>
-        </div>
-
-        <div class="tab-panel active" id="eventsTab">
-          <div class="panel-head">
-            <h2>Recent Events</h2>
-            <button class="mini-button" id="eventsButton" type="button">Refresh</button>
-          </div>
-          <div id="eventsPanel" class="data-table"></div>
-        </div>
-
-        <div class="tab-panel" id="approvalsTab">
-          <div class="panel-head">
-            <h2>Approval Inbox</h2>
-            <button class="mini-button" id="approvalsButton" type="button">Refresh</button>
-          </div>
-          <div id="approvalStatsPanel" class="approval-stats" aria-label="Approval queue stats"></div>
-          <div class="filter-row" aria-label="Approval filters">
-            <button class="filter-button active" type="button" data-approval-filter="pending">Pending</button>
-            <button class="filter-button" type="button" data-approval-filter="running">Running</button>
-            <button class="filter-button" type="button" data-approval-filter="done">Done</button>
-            <button class="filter-button" type="button" data-approval-filter="failed">Failed</button>
-          </div>
-          <div id="approvalsPanel" class="data-table"></div>
-        </div>
-
-        <div class="tab-panel" id="memoryTab">
-          <div class="split-panel">
-            <form id="memorySearchForm" class="panel-form">
-              <h2>Search Memory</h2>
-              <label class="field">
-                <span>Query</span>
-                <input id="memoryQueryInput" type="text" placeholder="Octoputer, route, deployment..." />
-              </label>
-              <button class="secondary-button" type="submit">Search</button>
-            </form>
-            <form id="memoryWriteForm" class="panel-form">
-              <h2>Write Memory</h2>
-              <label class="field">
-                <span>Summary</span>
-                <input id="memorySummaryInput" type="text" placeholder="Remember that..." />
-              </label>
-              <button class="secondary-button" type="submit">Write</button>
-            </form>
-          </div>
-          <div id="memoryPanel" class="data-table"></div>
-        </div>
-
-        <div class="tab-panel" id="connectorsTab">
-          <div class="panel-head">
-            <h2>Connectors</h2>
-            <button class="mini-button" id="connectorsButton" type="button">Refresh</button>
-          </div>
-          <form id="draftJobForm" class="panel-form draft-job-form">
-            <div class="draft-job-head">
-              <h2>Queue Local Draft</h2>
-              <span>Creates a pending Approval Inbox job</span>
-            </div>
-            <div class="draft-job-grid">
-              <label class="field">
-                <span>Action</span>
-                <select id="draftActionInput">
-                  <option value="github:draft_issue">GitHub issue draft</option>
-                  <option value="gmail:draft_reply">Gmail reply draft</option>
-                  <option value="google_drive:draft_doc_update">Drive doc update draft</option>
-                </select>
-              </label>
-              <label class="field">
-                <span id="draftTargetLabel">Target</span>
-                <input id="draftTargetInput" type="text" placeholder="owner/repo" />
-              </label>
-              <label class="field">
-                <span id="draftTitleLabel">Title</span>
-                <input id="draftTitleInput" type="text" placeholder="Issue title" />
-              </label>
-              <label class="field">
-                <span>Requested by</span>
-                <input id="draftRequestedByInput" type="text" placeholder="operator" />
-              </label>
-            </div>
-            <label class="field">
-              <span id="draftBodyLabel">Body</span>
-              <textarea id="draftBodyInput" placeholder="Draft content for review..."></textarea>
-            </label>
-            <details class="payload-drawer">
-              <summary>Payload preview</summary>
-              <pre id="draftPayloadPreview">{}</pre>
-            </details>
-            <div class="draft-job-actions">
-              <button class="secondary-button" type="submit">Queue draft</button>
-              <button class="mini-button" id="draftExampleButton" type="button">Example</button>
-            </div>
-            <p id="draftJobStatus" class="empty">No draft queued yet.</p>
-          </form>
-          <div id="connectorsPanel" class="data-table"></div>
-        </div>
-
-        <div class="tab-panel" id="filesTab">
-          <div class="panel-head">
-            <h2>Local Files</h2>
-            <button class="mini-button" id="uploadsButton" type="button">Refresh</button>
-          </div>
-          <div id="uploadStatsPanel" class="upload-stats"></div>
-          <form id="uploadForm" class="panel-form upload-form">
-            <div class="upload-grid">
-              <label class="field">
-                <span>File</span>
-                <input id="uploadFileInput" type="file" />
-              </label>
-              <label class="field">
-                <span>What is it?</span>
-                <select id="uploadCategoryInput">
-                  <option value="">Auto sort</option>
-                  <option value="receipts">Receipt</option>
-                  <option value="bills">Bill</option>
-                  <option value="invoices">Invoice</option>
-                  <option value="statements">Statement</option>
-                  <option value="taxes">Tax</option>
-                  <option value="medical">Medical</option>
-                  <option value="insurance">Insurance</option>
-                  <option value="warranties">Warranty</option>
-                  <option value="home">Home</option>
-                  <option value="vehicle">Vehicle</option>
-                  <option value="banking">Banking</option>
-                  <option value="inbox">Inbox / not sure</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Note</span>
-                <input id="uploadDescriptionInput" type="text" placeholder="Optional note..." />
-              </label>
-            </div>
-            <div class="draft-job-actions">
-              <button class="secondary-button" type="submit">Upload</button>
-              <span id="uploadSuggestionText" class="empty">Pick a file and O.P.E. will suggest where it belongs.</span>
-            </div>
-          </form>
-          <form id="uploadFilterForm" class="panel-form upload-filter-form">
-            <div class="upload-grid">
-              <label class="field">
-                <span>Search files</span>
-                <input id="uploadSearchInput" type="search" placeholder="Vendor, amount, filename..." />
-              </label>
-              <label class="field">
-                <span>Category</span>
-                <select id="uploadFilterCategoryInput">
-                  <option value="">All</option>
-                  <option value="receipts">Receipts</option>
-                  <option value="bills">Bills</option>
-                  <option value="invoices">Invoices</option>
-                  <option value="statements">Statements</option>
-                  <option value="taxes">Taxes</option>
-                  <option value="medical">Medical</option>
-                  <option value="insurance">Insurance</option>
-                  <option value="warranties">Warranties</option>
-                  <option value="home">Home</option>
-                  <option value="vehicle">Vehicle</option>
-                  <option value="banking">Banking</option>
-                  <option value="inbox">Inbox</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Review</span>
-                <select id="uploadReviewFilterInput">
-                  <option value="">All</option>
-                  <option value="true">Needs review</option>
-                  <option value="false">Reviewed</option>
-                </select>
-              </label>
-            </div>
-            <div class="draft-job-actions">
-              <button class="mini-button" type="submit">Filter</button>
-              <button class="mini-button" id="uploadClearFiltersButton" type="button">Clear</button>
-            </div>
-          </form>
-          <div id="uploadsPanel" class="data-table"></div>
-        </div>
-
-        <div class="tab-panel" id="toolsTab">
-          <div class="panel-head">
-            <h2>Tool Queue</h2>
-            <button class="mini-button" id="toolsButton" type="button">Refresh</button>
-          </div>
-          <div id="toolsPanel" class="data-table"></div>
-        </div>
-      </section>
     </div>
 
     <template id="emptyTemplate">
