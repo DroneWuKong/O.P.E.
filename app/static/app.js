@@ -87,6 +87,7 @@ const elements = {
   messageTokens: $('messageTokens'),
   sessionCost: $('sessionCost'),
   sessionTokens: $('sessionTokens'),
+  footerHealth: $('footerHealth'),
   modelSummary: $('modelSummary'),
   health: $('healthStatus'),
   ready: $('readyStatus'),
@@ -474,14 +475,9 @@ function chatMessageMeta(message) {
 }
 
 function renderChat() {
+  document.body.classList.toggle('has-chat', state.chatMessages.length > 0);
   if (!state.chatMessages.length) {
-    elements.answer.innerHTML = `
-      <section class="empty-orbit" aria-label="Empty chat">
-        <p class="orbit-kicker">O.P.E. / Octoputer</p>
-        <h3>What's the work?</h3>
-        <p>Ask plain. O.P.E. routes it.</p>
-      </section>
-    `;
+    elements.answer.innerHTML = '';
     return;
   }
   elements.answer.innerHTML = state.chatMessages.map((message) => {
@@ -680,18 +676,27 @@ function requestBody() {
 }
 
 async function checkStatus() {
+  let healthOk = false;
+  let readyOk = false;
+
   try {
     const health = await fetch('/health').then((response) => response.json());
-    setStatus(elements.health, 'Health', Boolean(health.ok));
+    healthOk = Boolean(health.ok);
+    setStatus(elements.health, 'Health', healthOk);
   } catch (error) {
     setStatus(elements.health, 'Health', false);
   }
 
   try {
     const ready = await fetch('/ready').then((response) => response.json());
-    setStatus(elements.ready, 'Ready', Boolean(ready.ok));
+    readyOk = Boolean(ready.ok);
+    setStatus(elements.ready, 'Ready', readyOk);
   } catch (error) {
     setStatus(elements.ready, 'Ready', false);
+  }
+
+  if (elements.footerHealth) {
+    elements.footerHealth.textContent = healthOk && readyOk ? 'Healthy' : (healthOk || readyOk ? 'Starting Up' : 'Unavailable');
   }
 }
 
