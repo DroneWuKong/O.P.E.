@@ -1,16 +1,16 @@
 :root {
-  color-scheme: light;
-  --page: #f7f4ee;
-  --surface: rgba(255, 255, 255, 0.72);
-  --surface-strong: rgba(255, 255, 255, 0.9);
-  --field: #fffdf9;
-  --ink: #151515;
-  --muted: #6f6b63;
-  --line: rgba(21, 21, 21, 0.12);
-  --line-strong: rgba(21, 21, 21, 0.22);
-  --accent: #151515;
-  --accent-soft: rgba(21, 21, 21, 0.06);
-  --danger: #9c3f2f;
+  color-scheme: dark;
+  --page: #090909;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --field: #111111;
+  --ink: #f2f2ee;
+  --muted: #9d9a92;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --accent: #f2f2ee;
+  --accent-soft: rgba(255, 255, 255, 0.08);
+  --danger: #ff8b6e;
 }
 
 * {
@@ -28,8 +28,8 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.94), transparent 34%),
-    linear-gradient(180deg, #fbfaf7 0%, #f7f4ee 50%, #f3efe7 100%);
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.07), transparent 30%),
+    linear-gradient(180deg, #111111 0%, #090909 46%, #050505 100%);
   font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
 }
 
@@ -128,13 +128,13 @@ body.has-chat .conversation-stage {
   padding: 22px 24px;
   font-size: 1.08rem;
   line-height: 1.5;
-  box-shadow: 0 20px 60px rgba(60, 50, 35, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
 }
 
 #queryInput::placeholder,
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #9a9388;
+  color: #7f7a71;
 }
 
 #queryInput:focus,
@@ -142,7 +142,7 @@ body.has-chat .conversation-stage {
 .field select:focus,
 .field textarea:focus {
   border-color: var(--line-strong);
-  box-shadow: 0 0 0 4px rgba(21, 21, 21, 0.05);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
 
 .primary-actions,
@@ -178,7 +178,7 @@ body.has-chat .conversation-stage {
 .primary-button {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: #090909;
 }
 
 .tab-button.active,
