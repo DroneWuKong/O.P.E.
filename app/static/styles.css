@@ -926,6 +926,37 @@ h2 {
   gap: 8px;
 }
 
+.upload-stats {
+  display: grid;
+  grid-template-columns: 0.7fr 0.7fr 1.6fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.upload-stats div {
+  border: 1px solid rgba(121, 132, 118, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 8px 10px;
+}
+
+.upload-stats span,
+.upload-stats small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.upload-stats strong {
+  display: block;
+  color: var(--signal);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 1rem;
+  margin: 2px 0;
+}
+
 .upload-item {
   display: grid;
   gap: 7px;
@@ -1337,6 +1368,7 @@ h2 {
   .form-grid,
   .draft-job-grid,
   .upload-grid,
+  .upload-stats,
   .split-panel {
     grid-template-columns: 1fr;
   }

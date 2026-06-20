@@ -351,6 +351,11 @@ def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> 
         data={'project': 'ope-core', 'description': 'bench receipt'},
         files={'file': ('acme-receipt.txt', payload, 'text/plain')},
     )
+    duplicate_response = client.post(
+        '/uploads',
+        data={'project': 'ope-core', 'description': 'same receipt again'},
+        files={'file': ('acme-receipt-copy.txt', payload, 'text/plain')},
+    )
 
     assert upload_response.status_code == 200
     body = upload_response.json()
@@ -359,10 +364,23 @@ def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> 
     assert body['extracted_fields']['vendor'] == 'ACME Hardware'
     assert body['extracted_fields']['amount'] == '42.19'
     assert 'ACME Hardware' in body['extracted_text_preview']
+    assert duplicate_response.status_code == 200
+    duplicate = duplicate_response.json()
+    assert duplicate['duplicate_of'] == body['id']
+    assert duplicate['duplicate_count'] == 1
+    assert duplicate['needs_review'] is True
+    assert duplicate['review_reason'] == 'Duplicate of acme-receipt.txt'
 
     search_response = client.get('/uploads?project=ope-core&query=ACME&limit=5')
     assert search_response.status_code == 200
-    assert search_response.json()['uploads'][0]['id'] == body['id']
+    assert body['id'] in {upload['id'] for upload in search_response.json()['uploads']}
+    stats_response = client.get('/uploads/stats?project=ope-core')
+    assert stats_response.status_code == 200
+    stats = stats_response.json()
+    assert stats['total'] == 2
+    assert stats['duplicates'] == 1
+    assert stats['needs_review'] == 1
+    assert stats['by_category']['receipts'] == 2
 
     patch_response = client.patch(
         f"/uploads/{body['id']}",
@@ -382,6 +400,7 @@ def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> 
     delete_response = client.delete(f"/uploads/{body['id']}")
     assert delete_response.status_code == 200
     assert not (tmp_path / patched['relative_path']).exists()
+    assert client.delete(f"/uploads/{duplicate['id']}").status_code == 200
 
 
 def test_recent_events(monkeypatch) -> None:

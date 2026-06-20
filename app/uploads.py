@@ -11,7 +11,7 @@ import tempfile
 import uuid
 
 from app.config import get_settings
-from app.models import UploadedFileRecord, UploadCategorySuggestion
+from app.models import UploadedFileRecord, UploadCategorySuggestion, UploadStatsResponse
 
 
 CATEGORY_ALIASES = {
@@ -249,10 +249,28 @@ def list_uploads(
                 record.category,
                 record.description or '',
                 record.extracted_text_preview or '',
+                record.duplicate_of or '',
                 json.dumps(record.extracted_fields, sort_keys=True),
             ]).lower()
         ]
     return sorted(records, key=lambda record: record.created_at, reverse=True)[:limit]
+
+
+def upload_stats(*, project: str | None = None) -> UploadStatsResponse:
+    records = _load_records()
+    if project:
+        records = [record for record in records if record.project == project]
+    by_category: dict[str, int] = {}
+    for record in records:
+        by_category[record.category] = by_category.get(record.category, 0) + 1
+    return UploadStatsResponse(
+        project=project,
+        total=len(records),
+        total_bytes=sum(record.size_bytes for record in records),
+        needs_review=sum(1 for record in records if record.needs_review),
+        duplicates=sum(1 for record in records if record.duplicate_of),
+        by_category=dict(sorted(by_category.items())),
+    )
 
 
 def find_upload(upload_id: str) -> UploadedFileRecord | None:
@@ -348,6 +366,13 @@ def save_upload(
     if len(data) > settings.ope_upload_max_bytes:
         raise ValueError(f'uploaded file is larger than {settings.ope_upload_max_bytes} bytes')
 
+    file_hash = hashlib.sha256(data).hexdigest()
+    existing_records = _load_records()
+    duplicate_matches = [
+        record for record in existing_records
+        if record.sha256 == file_hash and record.project == (project or settings.ope_default_project)
+    ]
+    duplicate_source = duplicate_matches[0] if duplicate_matches else None
     suggestion = suggest_category(filename, content_type)
     final_category = normalize_category(category) or suggestion.category
     now = datetime.now(timezone.utc)
@@ -365,10 +390,12 @@ def save_upload(
     extracted_text, extraction_method = extract_text(original_name, content_type, data)
     extracted = extract_fields(extracted_text, original_name)
     text_preview = extracted_text[:500] if extracted_text else None
-    needs_review = suggestion.confidence < 0.7 or not extracted
+    needs_review = suggestion.confidence < 0.7 or not extracted or duplicate_source is not None
     review_reason = None
     if needs_review:
-        if not extracted_text and extraction_method == 'ocr-unavailable':
+        if duplicate_source:
+            review_reason = f'Duplicate of {duplicate_source.original_filename}'
+        elif not extracted_text and extraction_method == 'ocr-unavailable':
             review_reason = 'OCR unavailable for image; operator review needed'
         elif not extracted:
             review_reason = 'No receipt/bill metadata extracted'
@@ -385,13 +412,15 @@ def save_upload(
         confidence=suggestion.confidence,
         content_type=content_type,
         size_bytes=len(data),
-        sha256=hashlib.sha256(data).hexdigest(),
+        sha256=file_hash,
         relative_path=relative_path.as_posix(),
         description=description.strip() if description and description.strip() else None,
         extracted_text_preview=text_preview,
         extracted_fields={**extracted, 'extraction_method': extraction_method},
         needs_review=needs_review,
         review_reason=review_reason,
+        duplicate_of=duplicate_source.id if duplicate_source else None,
+        duplicate_count=len(duplicate_matches),
         created_at=now.isoformat(),
     )
     with _manifest_path().open('a', encoding='utf-8') as manifest:

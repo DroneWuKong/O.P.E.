@@ -34,6 +34,7 @@ from app.models import (
     ToolJobStatus,
     ToolJobUpdateRequest,
     UploadCategorySuggestion,
+    UploadStatsResponse,
     UploadUpdateRequest,
     UploadedFileRecord,
     UploadsResponse,
@@ -63,7 +64,7 @@ from app.tools import (
     tool_queue_stats,
     update_tool_job,
 )
-from app.uploads import delete_upload, find_upload, list_uploads, save_upload, suggest_category, update_upload, uploaded_file_path
+from app.uploads import delete_upload, find_upload, list_uploads, save_upload, suggest_category, update_upload, upload_stats, uploaded_file_path
 
 
 logger = logging.getLogger(__name__)
@@ -446,6 +447,11 @@ def recent_uploads(
             limit=limit,
         )
     )
+
+
+@app.get('/uploads/stats', response_model=UploadStatsResponse, dependencies=[Depends(require_api_key)])
+def uploads_stats(project: str | None = None) -> UploadStatsResponse:
+    return upload_stats(project=project)
 
 
 @app.patch('/uploads/{upload_id}', response_model=UploadedFileRecord, dependencies=[Depends(require_api_key)])

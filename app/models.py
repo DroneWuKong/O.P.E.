@@ -214,11 +214,22 @@ class UploadedFileRecord(BaseModel):
     extracted_fields: dict[str, Any] = Field(default_factory=dict)
     needs_review: bool = False
     review_reason: str | None = None
+    duplicate_of: str | None = None
+    duplicate_count: int = 0
     created_at: str
 
 
 class UploadsResponse(BaseModel):
     uploads: list[UploadedFileRecord] = Field(default_factory=list)
+
+
+class UploadStatsResponse(BaseModel):
+    project: str | None = None
+    total: int = 0
+    total_bytes: int = 0
+    needs_review: int = 0
+    duplicates: int = 0
+    by_category: dict[str, int] = Field(default_factory=dict)
 
 
 class UploadUpdateRequest(BaseModel):

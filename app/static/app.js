@@ -103,6 +103,7 @@ const elements = {
   uploadCategory: $('uploadCategoryInput'),
   uploadDescription: $('uploadDescriptionInput'),
   uploadSuggestion: $('uploadSuggestionText'),
+  uploadStats: $('uploadStatsPanel'),
   uploadFilterForm: $('uploadFilterForm'),
   uploadSearch: $('uploadSearchInput'),
   uploadFilterCategory: $('uploadFilterCategoryInput'),
@@ -980,8 +981,32 @@ function uploadFieldSummary(upload = {}) {
 }
 
 function uploadReviewBadge(upload = {}) {
-  if (!upload.needs_review) return '<span class="ok-badge">reviewed</span>';
-  return `<span class="warn-badge">${escapeHtml(upload.review_reason || 'needs review')}</span>`;
+  const duplicate = upload.duplicate_of ? '<span class="warn-badge">duplicate</span>' : '';
+  if (!upload.needs_review) return `<span class="ok-badge">reviewed</span>${duplicate}`;
+  return `<span class="warn-badge">${escapeHtml(upload.review_reason || 'needs review')}</span>${duplicate}`;
+}
+
+function renderUploadStats(stats = {}) {
+  const categoryText = Object.entries(stats.by_category || {})
+    .map(([category, count]) => `${category}: ${count}`)
+    .join(' / ') || 'no categories';
+  elements.uploadStats.innerHTML = `
+    <div>
+      <span>Total</span>
+      <strong>${Number(stats.total || 0)}</strong>
+      <small>${escapeHtml(formatBytes(stats.total_bytes || 0))}</small>
+    </div>
+    <div>
+      <span>Review</span>
+      <strong>${Number(stats.needs_review || 0)}</strong>
+      <small>needs attention</small>
+    </div>
+    <div>
+      <span>Duplicates</span>
+      <strong>${Number(stats.duplicates || 0)}</strong>
+      <small>${escapeHtml(categoryText)}</small>
+    </div>
+  `;
 }
 
 async function downloadUpload(uploadId, filename) {
@@ -1053,7 +1078,12 @@ async function loadUploads() {
     if (elements.uploadSearch.value.trim()) params.set('query', elements.uploadSearch.value.trim());
     if (elements.uploadFilterCategory.value) params.set('category', elements.uploadFilterCategory.value);
     if (elements.uploadReviewFilter.value) params.set('needs_review', elements.uploadReviewFilter.value);
-    const data = await api(`/uploads?${params.toString()}`);
+    const statsParams = new URLSearchParams({ project: elements.project.value.trim() || 'ope-core' });
+    const [data, stats] = await Promise.all([
+      api(`/uploads?${params.toString()}`),
+      api(`/uploads/stats?${statsParams.toString()}`),
+    ]);
+    renderUploadStats(stats);
     const uploads = data.uploads || [];
     elements.uploads.innerHTML = uploads.map((upload) => `
       <div class="row-item upload-item" data-upload-id="${escapeHtml(upload.id)}">
@@ -1064,6 +1094,7 @@ async function loadUploads() {
         </strong>
         <span>${escapeHtml(upload.relative_path)} / ${escapeHtml(formatBytes(upload.size_bytes))}</span>
         <small>${escapeHtml(uploadFieldSummary(upload) || upload.description || `suggested ${upload.suggested_category} (${Math.round((upload.confidence || 0) * 100)}%)`)}</small>
+        ${upload.duplicate_of ? `<small>duplicate of ${escapeHtml(upload.duplicate_of)}</small>` : ''}
         ${upload.extracted_text_preview ? `<details><summary>Text preview</summary><p>${escapeHtml(upload.extracted_text_preview)}</p></details>` : ''}
         <div class="upload-actions">
           <button class="mini-button" type="button" data-upload-action="download" data-upload-id="${escapeHtml(upload.id)}" data-upload-filename="${escapeHtml(upload.original_filename)}">Download</button>
