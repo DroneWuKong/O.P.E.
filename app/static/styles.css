@@ -116,6 +116,17 @@ body.has-chat .conversation-stage {
   gap: 18px;
 }
 
+.composer-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.composer-field {
+  min-width: 0;
+}
+
 #queryInput {
   width: 100%;
   min-height: 76px;
@@ -527,6 +538,7 @@ body.has-chat .conversation-stage {
 
   .form-grid,
   .split-panel,
+  .composer-access-row,
   .access-row {
     grid-template-columns: 1fr;
   }

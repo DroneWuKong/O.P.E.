@@ -705,14 +705,20 @@ async function submitAsk(event) {
   await sendCurrentPrompt();
 }
 
+function promptRequirement(message, target) {
+  setBusy(message);
+  appendChatMessage('system', message, { status: 'failed' });
+  if (target) target.focus();
+}
+
 async function sendCurrentPrompt() {
   const body = requestBody();
   if (!hasApiKey()) {
-    setBusy('Need key');
+    promptRequirement('Enter your OPE API key to execute a mission.', elements.apiKey);
     return;
   }
   if (!body.query) {
-    setBusy('Need message');
+    promptRequirement('Enter a mission before you execute.', elements.query);
     return;
   }
 
@@ -774,11 +780,11 @@ function retryLastPrompt() {
 async function previewPlan() {
   const body = requestBody();
   if (!hasApiKey()) {
-    setBusy('Need key');
+    promptRequirement('Enter your OPE API key to plan a mission.', elements.apiKey);
     return;
   }
   if (!body.query) {
-    setBusy('Need message');
+    promptRequirement('Enter a mission before you plan it.', elements.query);
     return;
   }
   setBusy('Planning...');

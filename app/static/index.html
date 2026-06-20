@@ -18,6 +18,13 @@
           <h1>What needs to get done?</h1>
           <label class="sr-only" for="queryInput">Mission</label>
           <textarea id="queryInput" rows="1" placeholder="Enter the mission."></textarea>
+          <div class="composer-access-row">
+            <label class="field composer-field">
+              <span>API key</span>
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
+            </label>
+            <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
+          </div>
           <div class="primary-actions">
             <button class="primary-button" id="askButton" type="submit">Execute</button>
             <button class="secondary-button" id="planButton" type="button">Plan</button>
@@ -27,9 +34,9 @@
 
         <footer class="status-footer" aria-label="System status">
           <span>Memory On</span>
-          <span aria-hidden="true">·</span>
+          <span aria-hidden="true">&middot;</span>
           <span>Tools On</span>
-          <span aria-hidden="true">·</span>
+          <span aria-hidden="true">&middot;</span>
           <span id="footerHealth">Healthy</span>
         </footer>
         <div hidden>
@@ -103,13 +110,6 @@
               <label><input id="approvalInput" type="checkbox" /> Approval token</label>
             </div>
 
-            <div class="access-row">
-              <label class="field">
-                <span>API key</span>
-                <input id="apiKeyInput" type="password" autocomplete="off" placeholder="OPE API key" />
-              </label>
-              <button class="text-button" id="forgetKeyButton" type="button">Forget key</button>
-            </div>
           </section>
 
           <section class="advanced-section">
