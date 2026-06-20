@@ -37,7 +37,7 @@ CATEGORY_ALIASES = {
 
 CATEGORY_KEYWORDS = [
     ('receipts', ['receipt', 'purchase', 'paid', 'order']),
-    ('bills', ['bill', 'due', 'utility', 'electric', 'gas', 'water', 'internet', 'phone']),
+    ('bills', ['bill', 'due', 'amount due', 'balance due', 'due date', 'utility', 'electric', 'gas', 'water', 'internet', 'phone']),
     ('invoices', ['invoice', 'estimate', 'quote']),
     ('statements', ['statement', 'account', 'balance']),
     ('taxes', ['tax', 'w2', '1099', 'irs', 'property-tax']),
@@ -95,6 +95,10 @@ def normalize_category(value: str | None) -> str | None:
         return None
     key = _safe_segment(value.lower().replace(' ', '-'), 'inbox')
     return CATEGORY_ALIASES.get(key, key)
+
+
+def _tag(value: str) -> str:
+    return _safe_segment(value.lower().replace(' ', '-'), 'tag')[:48]
 
 
 def _clean_text(value: str) -> str:
@@ -197,16 +201,54 @@ def extract_fields(text: str, filename: str) -> dict[str, str]:
     return fields
 
 
-def suggest_category(filename: str, content_type: str | None = None) -> UploadCategorySuggestion:
-    haystack = filename.lower().replace('_', '-').replace(' ', '-')
+def suggest_category(
+    filename: str,
+    content_type: str | None = None,
+    content_text: str | None = None,
+) -> UploadCategorySuggestion:
+    filename_haystack = filename.lower().replace('_', '-').replace(' ', '-')
     for category, keywords in CATEGORY_KEYWORDS:
-        if any(keyword in haystack for keyword in keywords):
+        if any(keyword.replace(' ', '-') in filename_haystack for keyword in keywords):
             return UploadCategorySuggestion(category=category, confidence=0.82, reason='matched filename')
+
+    text_haystack = _clean_text(content_text or '').lower()
+    if text_haystack:
+        scored: list[tuple[int, str, str]] = []
+        for category, keywords in CATEGORY_KEYWORDS:
+            matched = [keyword for keyword in keywords if keyword in text_haystack]
+            if matched:
+                scored.append((len(matched), category, matched[0]))
+        if scored:
+            score, category, keyword = sorted(scored, reverse=True)[0]
+            confidence = min(0.78, 0.48 + (score * 0.1))
+            return UploadCategorySuggestion(category=category, confidence=confidence, reason=f'matched content: {keyword}')
+
     if content_type == 'application/pdf':
         return UploadCategorySuggestion(category='documents', confidence=0.35, reason='pdf document')
     if content_type and content_type.startswith('image/'):
         return UploadCategorySuggestion(category='receipts', confidence=0.4, reason='image upload')
     return UploadCategorySuggestion(category='inbox', confidence=0.15, reason='needs operator review')
+
+
+def build_tags(
+    *,
+    category: str,
+    fields: dict[str, str],
+    needs_review: bool,
+    duplicate_source: UploadedFileRecord | None,
+) -> list[str]:
+    tags = {
+        f'category:{_tag(category)}',
+        'needs-review' if needs_review else 'reviewed',
+    }
+    if duplicate_source:
+        tags.add('duplicate')
+    if fields.get('vendor'):
+        tags.add(f'vendor:{_tag(fields["vendor"])}')
+    for key in ('date', 'amount', 'reference'):
+        if fields.get(key):
+            tags.add(key)
+    return sorted(tags)
 
 
 def _load_records() -> list[UploadedFileRecord]:
@@ -250,6 +292,7 @@ def list_uploads(
                 record.description or '',
                 record.extracted_text_preview or '',
                 record.duplicate_of or '',
+                ' '.join(record.tags),
                 json.dumps(record.extracted_fields, sort_keys=True),
             ]).lower()
         ]
@@ -373,13 +416,15 @@ def save_upload(
         if record.sha256 == file_hash and record.project == (project or settings.ope_default_project)
     ]
     duplicate_source = duplicate_matches[0] if duplicate_matches else None
-    suggestion = suggest_category(filename, content_type)
-    final_category = normalize_category(category) or suggestion.category
     now = datetime.now(timezone.utc)
-    project_segment = _safe_segment(project or settings.ope_default_project, 'default')
-    category_segment = _safe_segment(final_category, 'inbox')
     original_name = Path(filename or 'upload.bin').name
     safe_name = _safe_segment(original_name, 'upload.bin')
+    extracted_text, extraction_method = extract_text(original_name, content_type, data)
+    extracted = extract_fields(extracted_text, original_name)
+    suggestion = suggest_category(filename, content_type, extracted_text)
+    final_category = normalize_category(category) or suggestion.category
+    project_segment = _safe_segment(project or settings.ope_default_project, 'default')
+    category_segment = _safe_segment(final_category, 'inbox')
     suffix = Path(safe_name).suffix[:16]
     upload_id = str(uuid.uuid4())
     stored_filename = f'{now.strftime("%Y%m%d-%H%M%S")}-{upload_id[:8]}{suffix}'
@@ -387,8 +432,6 @@ def save_upload(
     destination = upload_root() / relative_path
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(data)
-    extracted_text, extraction_method = extract_text(original_name, content_type, data)
-    extracted = extract_fields(extracted_text, original_name)
     text_preview = extracted_text[:500] if extracted_text else None
     needs_review = suggestion.confidence < 0.7 or not extracted or duplicate_source is not None
     review_reason = None
@@ -417,6 +460,12 @@ def save_upload(
         description=description.strip() if description and description.strip() else None,
         extracted_text_preview=text_preview,
         extracted_fields={**extracted, 'extraction_method': extraction_method},
+        tags=build_tags(
+            category=final_category,
+            fields=extracted,
+            needs_review=needs_review,
+            duplicate_source=duplicate_source,
+        ),
         needs_review=needs_review,
         review_reason=review_reason,
         duplicate_of=duplicate_source.id if duplicate_source else None,

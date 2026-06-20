@@ -986,6 +986,12 @@ function uploadReviewBadge(upload = {}) {
   return `<span class="warn-badge">${escapeHtml(upload.review_reason || 'needs review')}</span>${duplicate}`;
 }
 
+function uploadTags(upload = {}) {
+  const tags = Array.isArray(upload.tags) ? upload.tags.slice(0, 6) : [];
+  if (!tags.length) return '';
+  return `<div class="upload-tags">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}</div>`;
+}
+
 function renderUploadStats(stats = {}) {
   const categoryText = Object.entries(stats.by_category || {})
     .map(([category, count]) => `${category}: ${count}`)
@@ -1094,6 +1100,7 @@ async function loadUploads() {
         </strong>
         <span>${escapeHtml(upload.relative_path)} / ${escapeHtml(formatBytes(upload.size_bytes))}</span>
         <small>${escapeHtml(uploadFieldSummary(upload) || upload.description || `suggested ${upload.suggested_category} (${Math.round((upload.confidence || 0) * 100)}%)`)}</small>
+        ${uploadTags(upload)}
         ${upload.duplicate_of ? `<small>duplicate of ${escapeHtml(upload.duplicate_of)}</small>` : ''}
         ${upload.extracted_text_preview ? `<details><summary>Text preview</summary><p>${escapeHtml(upload.extracted_text_preview)}</p></details>` : ''}
         <div class="upload-actions">

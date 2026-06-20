@@ -334,6 +334,36 @@ def test_upload_file_and_list(tmp_path, monkeypatch) -> None:
     assert list_response.json()['uploads'][0]['id'] == body['id']
 
 
+def test_upload_uses_extracted_text_for_category_and_tags(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        uploads,
+        'get_settings',
+        lambda: SimpleNamespace(
+            ope_upload_root=str(tmp_path),
+            ope_upload_max_bytes=1024 * 1024,
+            ope_default_project='ope-core',
+        ),
+    )
+
+    payload = b'North Shore Water Utility\nAmount Due: $88.31\nDue Date: 07/01/2026\nAccount # WTR-9012\n'
+    response = client.post(
+        '/uploads',
+        data={'project': 'ope-core'},
+        files={'file': ('scan-001.txt', payload, 'text/plain')},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['category'] == 'bills'
+    assert body['suggested_category'] == 'bills'
+    assert body['confidence'] >= 0.5
+    assert body['relative_path'].startswith('ope-core/bills/')
+    assert 'category:bills' in body['tags']
+    assert 'vendor:north-shore-water-utility' in body['tags']
+    assert 'amount' in body['tags']
+    assert 'reference' in body['tags']
+
+
 def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(
         uploads,
@@ -363,6 +393,9 @@ def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> 
     assert body['needs_review'] is False
     assert body['extracted_fields']['vendor'] == 'ACME Hardware'
     assert body['extracted_fields']['amount'] == '42.19'
+    assert 'category:receipts' in body['tags']
+    assert 'vendor:acme-hardware' in body['tags']
+    assert 'reviewed' in body['tags']
     assert 'ACME Hardware' in body['extracted_text_preview']
     assert duplicate_response.status_code == 200
     duplicate = duplicate_response.json()
@@ -370,6 +403,8 @@ def test_upload_extract_search_update_download_delete(tmp_path, monkeypatch) -> 
     assert duplicate['duplicate_count'] == 1
     assert duplicate['needs_review'] is True
     assert duplicate['review_reason'] == 'Duplicate of acme-receipt.txt'
+    assert 'duplicate' in duplicate['tags']
+    assert 'needs-review' in duplicate['tags']
 
     search_response = client.get('/uploads?project=ope-core&query=ACME&limit=5')
     assert search_response.status_code == 200

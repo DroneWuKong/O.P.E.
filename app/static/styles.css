@@ -983,6 +983,23 @@ h2 {
   color: var(--muted);
 }
 
+.upload-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.upload-tags span {
+  border: 1px solid rgba(121, 132, 118, 0.22);
+  border-radius: 999px;
+  color: #9fb3a3;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 6px;
+}
+
 .upload-item details {
   margin-top: 7px;
 }

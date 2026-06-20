@@ -212,6 +212,7 @@ class UploadedFileRecord(BaseModel):
     description: str | None = None
     extracted_text_preview: str | None = None
     extracted_fields: dict[str, Any] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
     needs_review: bool = False
     review_reason: str | None = None
     duplicate_of: str | None = None
