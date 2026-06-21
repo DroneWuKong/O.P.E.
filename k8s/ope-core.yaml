@@ -36,6 +36,10 @@ spec:
               value: ope-core
             - name: OPE_RUN_MIGRATIONS_ON_STARTUP
               value: "false"
+            # Do not block the HTTP server from starting on external services.
+            # /health and / stay reachable; /ready still reports postgres/redis state.
+            - name: OPE_SKIP_EXTERNAL_INIT
+              value: "true"
             - name: OPE_REQUIRE_API_KEY
               value: "true"
             - name: OPE_UPLOAD_ROOT
