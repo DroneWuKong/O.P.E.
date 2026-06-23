@@ -114,11 +114,8 @@ disable_legacy_user_forwarders() {
 disable_stale_services() {
   sudo systemctl disable --now ope-traefik-https-tailnet-bridge.service 2>/dev/null || true
   sudo rm -f /etc/systemd/system/ope-traefik-https-tailnet-bridge.service
-}
-
-configure_tailscale_serve() {
-  sudo tailscale serve reset >/dev/null 2>&1 || true
-  sudo tailscale serve --bg 18080
+  sudo systemctl disable --now ope-https-loopback-bridge.service 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/ope-https-loopback-bridge.service
 }
 
 install_bridge_bin
@@ -127,24 +124,18 @@ disable_stale_services
 install_service ope-traefik-http-tailnet-bridge "${LISTEN_HOST}" 80 30080 'OPE HTTP bridge from octo-a to octo-b NodePort'
 install_service ope-tailnet-bridge "${LISTEN_HOST}" 30080 30080 'OPE tailnet bridge from octo-a to octo-b NodePort'
 install_service ope-litellm-tailnet-bridge "${LISTEN_HOST}" 30400 30400 'OPE LiteLLM tailnet bridge from octo-a to octo-b NodePort'
-install_service ope-https-loopback-bridge 127.0.0.1 18080 30080 'OPE HTTPS loopback bridge for Tailscale Serve'
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now \
   ope-traefik-http-tailnet-bridge.service \
   ope-tailnet-bridge.service \
-  ope-litellm-tailnet-bridge.service \
-  ope-https-loopback-bridge.service
+  ope-litellm-tailnet-bridge.service
 sudo systemctl restart \
   ope-traefik-http-tailnet-bridge.service \
   ope-tailnet-bridge.service \
-  ope-litellm-tailnet-bridge.service \
-  ope-https-loopback-bridge.service
-configure_tailscale_serve
+  ope-litellm-tailnet-bridge.service
 
 systemctl is-active ope-traefik-http-tailnet-bridge.service
 systemctl is-active ope-tailnet-bridge.service
 systemctl is-active ope-litellm-tailnet-bridge.service
-systemctl is-active ope-https-loopback-bridge.service
-sudo tailscale serve status
-sudo ss -ltnp '( sport = :80 or sport = :30080 or sport = :30400 or sport = :18080 )' || true
+sudo ss -ltnp '( sport = :80 or sport = :30080 or sport = :30400 )' || true

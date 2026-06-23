@@ -114,20 +114,17 @@ That installer disables the legacy user services `ope-core-forward.service` and
 and creates persistent system services for the O.P.E. NodePorts plus:
 
 - an HTTP bridge on port `80`
-- a loopback-only bridge on `127.0.0.1:18080` for `tailscale serve`
 
 It also inserts a narrow NAT bypass for `tailscale0` before k3s NodePort rules
-so Kubernetes does not steal packets meant for the local bridge, and resets
-`tailscale serve` to publish the tailnet HTTPS hostname against the loopback
-bridge.
+so Kubernetes does not steal packets meant for the local bridge.
 
 An HTTP host route is reachable through the bridged control-plane host route:
 
 - `http://ope.100.65.161.67.sslip.io`
 
-A tailnet HTTPS route is also available through Tailscale Serve:
-
-- `https://octo-a.tail18b45.ts.net`
+The `octo-a` tailnet HTTPS hostname is reserved for the existing host dashboard
+surface, not O.P.E. O.P.E. should stay on its dedicated sslip host route or the
+worker-node NodePort addresses above.
 
 The worker-node NodePort routes remain the direct supported staging path for Hub
 and other tailnet clients. Protected API calls still require
