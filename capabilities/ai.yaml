@@ -1,0 +1,18 @@
+id: ai_assistant
+name: AI Assistant
+layer: ai_automation
+implementation_status: implemented
+requires:
+  - litellm
+  - ai_provider
+enhances:
+  - local_database
+  - provider_health
+fallbacks:
+  - alternate_ai_provider
+  - manual_workflow
+minimum_viable_mode:
+  - human_operator
+operator_messages:
+  ai_lost: "AI is unavailable. Continue manual work; automated assistance requires a working provider."
+

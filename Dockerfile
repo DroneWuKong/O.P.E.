@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY migrations ./migrations
 COPY policies ./policies
+COPY capabilities ./capabilities
 COPY examples ./examples
 
 USER ope
