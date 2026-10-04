@@ -6,56 +6,56 @@ on:
 jobs:
   diagnostics:
     runs-on: ${{ fromJSON(vars.OCTO_CP_RUNNER || '["self-hosted","octo-cp"]') }}
+    timeout-minutes: 10
     env:
       NS: ope
       KUBECONFIG: ${{ vars.KUBECONFIG || '/etc/rancher/k3s/k3s.yaml' }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Resolve kubectl
-        run: |
-          set -e
-          if command -v kubectl >/dev/null; then KUBECTL=kubectl
-          elif command -v k3s >/dev/null; then KUBECTL="k3s kubectl"
-          else echo "::error::No kubectl/k3s on this runner."; exit 1
-          fi
-          echo "KUBECTL=$KUBECTL" >> "$GITHUB_ENV"
-          $KUBECTL version --output=yaml >/dev/null
+        run: bash scripts/resolve-kubectl.sh
 
       - name: Cluster snapshot
         run: |
           set +e
-          $KUBECTL get nodes -o wide
-          $KUBECTL -n kube-system get pods -o wide
-          $KUBECTL -n kube-system get svc -o wide
-          $KUBECTL -n "$NS" get all -o wide
-          $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
+          "$KUBECTL" get nodes -o wide
+          "$KUBECTL" get nodes -o custom-columns=NAME:.metadata.name,UNSCHEDULABLE:.spec.unschedulable,TAINTS:.spec.taints
+          "$KUBECTL" -n "$NS" get pvc -o wide
+          "$KUBECTL" get pv -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,CLAIM:.spec.claimRef.name,NODE_AFFINITY:.spec.nodeAffinity
+          "$KUBECTL" -n "$NS" describe pods -l app=postgres
+          "$KUBECTL" -n kube-system get pods -o wide
+          "$KUBECTL" -n kube-system get svc -o wide
+          "$KUBECTL" -n "$NS" get all -o wide
+          "$KUBECTL" -n "$NS" get events --sort-by=.lastTimestamp | tail -80
 
       - name: DNS smoke
         run: |
           set +e
-          $KUBECTL -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
-            --image=busybox:1.36 -- \
+          "$KUBECTL" -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
+            --image=busybox:1.36 --pod-running-timeout=20s -- \
             sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local; nslookup github.com; nslookup api.openai.com; nslookup api.anthropic.com"
-          $KUBECTL -n kube-system get configmap coredns -o yaml || true
-          $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
-          $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
+          "$KUBECTL" -n kube-system get configmap coredns -o yaml || true
+          "$KUBECTL" -n kube-system logs deploy/coredns --tail=120 || true
+          "$KUBECTL" -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
           exit 0
 
       - name: Describe OPE workloads
         run: |
           set +e
-          $KUBECTL -n "$NS" describe deploy/litellm
-          $KUBECTL -n "$NS" describe deploy/ope-core
-          $KUBECTL -n "$NS" describe pods -l app=ope-core
-          $KUBECTL -n "$NS" describe pods -l app=litellm
+          "$KUBECTL" -n "$NS" describe deploy/litellm
+          "$KUBECTL" -n "$NS" describe deploy/ope-core
+          "$KUBECTL" -n "$NS" describe pods -l app=ope-core
+          "$KUBECTL" -n "$NS" describe pods -l app=litellm
 
       - name: Recent logs
         run: |
           set +e
-          $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
-          for pod in $($KUBECTL -n "$NS" get pods -l app=ope-core -o name); do
+          "$KUBECTL" -n "$NS" logs deploy/ope-core --pod-running-timeout=20s --all-containers=true --tail=200
+          for pod in $("$KUBECTL" -n "$NS" get pods -l app=ope-core -o name); do
             echo "---- previous logs: $pod ----"
-            $KUBECTL -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
+            "$KUBECTL" -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
           done
-          $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
-          $KUBECTL -n "$NS" logs deploy/postgres --all-containers=true --tail=80
-          $KUBECTL -n "$NS" logs deploy/redis --all-containers=true --tail=80
+          "$KUBECTL" -n "$NS" logs deploy/litellm --all-containers=true --tail=200
+          "$KUBECTL" -n "$NS" logs deploy/postgres --all-containers=true --tail=80
+          "$KUBECTL" -n "$NS" logs deploy/redis --all-containers=true --tail=80
