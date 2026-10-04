@@ -41,6 +41,8 @@ from app.models import (
 )
 from app.approvals import list_approval_rules, tokens_approve_route
 from app.auth import require_api_key
+from app.degradation.capabilities import load_capabilities
+from app.routes.system import router as system_router
 from app.connectors import get_connector_action, list_connectors
 from app.planner import build_plan, list_model_aliases, list_routes
 from app.memory import (
@@ -107,6 +109,7 @@ async def connect_external_services() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.capability_registry = load_capabilities()
     settings = get_settings()
     if not settings.ope_skip_external_init:
         await connect_external_services()
@@ -117,6 +120,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title='OPE Core', version='0.1.0', lifespan=lifespan)
+app.include_router(system_router)
 
 STATIC_DIR = Path(__file__).resolve().parent / 'static'
 if STATIC_DIR.exists():
@@ -142,6 +146,7 @@ def root() -> dict:
             'uploads': '/uploads',
             'memory_search': '/memory/search',
             'tool_queue_stats': '/tools/queue/stats',
+            'system_capabilities': '/system/capabilities',
         },
     }
 

@@ -283,6 +283,10 @@ Acceptance criteria:
 
 ## Phase 1 — Onion Model and Capability Registry
 
+Implemented foundation: startup validates the YAML contracts in `capabilities/`; missing, malformed, duplicate, or invalid contracts stop startup before external connections. `GET /system/capabilities` returns the validated startup snapshot and uses the existing bearer-key policy. Each contract declares dependencies, enhancements, intended fallbacks, minimum viable requirements, operator messages, and whether its implementation is present or planned. Cloud sync is marked planned.
+
+These contracts describe capability requirements. They do not report live availability, calculate a degradation mode, execute a fallback, or claim sync queueing is implemented. Health observations and runtime resolution remain Phases 2–3; durable sync remains Phase 5.
+
 Deliverables:
 
 ```text
@@ -624,3 +628,4 @@ app/routes/system.py
 ```
 
 Do not start with mesh, TAK, RTK, or LoRa. Start with the onion model and capability registry. Everything else depends on that.
+

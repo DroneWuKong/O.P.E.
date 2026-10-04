@@ -1,0 +1,17 @@
+id: local_records
+name: Local Records
+layer: local_records
+implementation_status: implemented
+requires:
+  - local_database
+  - local_filesystem
+enhances:
+  - cloud_sync
+fallbacks:
+  - manual_record
+minimum_viable_mode:
+  - local_database
+  - local_filesystem
+operator_messages:
+  storage_lost: "Local storage is unavailable. Do not assume records were saved; verify storage before continuing."
+

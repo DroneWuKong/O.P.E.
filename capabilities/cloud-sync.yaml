@@ -1,0 +1,18 @@
+id: cloud_sync
+name: Cloud Sync
+layer: cloud_sync
+implementation_status: planned
+requires:
+  - local_database
+  - network_transport
+  - cloud_service
+enhances:
+  - store_forward_transport
+fallbacks:
+  - local_records
+  - manual_export
+minimum_viable_mode:
+  - local_database
+operator_messages:
+  cloud_lost: "Cloud sync is unavailable. Local records remain separate; automatic queueing and replay are not implemented yet."
+
