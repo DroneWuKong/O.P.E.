@@ -29,14 +29,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve kubectl
-        run: |
-          set -e
-          if command -v kubectl >/dev/null; then KUBECTL=kubectl
-          elif command -v k3s >/dev/null; then KUBECTL="k3s kubectl"
-          else echo "::error::No kubectl/k3s on this runner."; exit 1
-          fi
-          echo "KUBECTL=$KUBECTL" >> "$GITHUB_ENV"
-          $KUBECTL version --output=yaml >/dev/null 2>&1 || { echo "::error::kubectl cannot reach the cluster using KUBECONFIG=$KUBECONFIG."; exit 1; }
+        run: bash scripts/resolve-kubectl.sh
 
       - name: Validate required secrets
         env:
@@ -94,12 +87,12 @@ jobs:
           print(f'postgresql://ope:{password}@postgres.{namespace}.svc.cluster.local:5432/ope')
           PY
           )"
-          $KUBECTL apply -f k8s/namespace.yaml
-          $KUBECTL -n "$NS" create secret generic ope-db \
+          "$KUBECTL" apply -f k8s/namespace.yaml
+          "$KUBECTL" -n "$NS" create secret generic ope-db \
             --from-literal=postgres-password="$POSTGRES_PASSWORD" \
             --from-literal=postgres-dsn="$POSTGRES_DSN" \
-            --dry-run=client -o yaml | $KUBECTL apply -f -
-          $KUBECTL -n "$NS" create secret generic ope-provider-env \
+            --dry-run=client -o yaml | "$KUBECTL" apply -f -
+          "$KUBECTL" -n "$NS" create secret generic ope-provider-env \
             --from-literal=OPENAI_API_KEY="$OPENAI_API_KEY_CLEAN" \
             --from-literal=ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY_CLEAN" \
             --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY_CLEAN" \
@@ -108,26 +101,26 @@ jobs:
             --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN_CLEAN" \
             --from-literal=GOOGLE_ACCESS_TOKEN="$GOOGLE_ACCESS_TOKEN_CLEAN" \
             --from-literal=GMAIL_ACCESS_TOKEN="$GMAIL_ACCESS_TOKEN_CLEAN" \
-            --dry-run=client -o yaml | $KUBECTL apply -f -
-          $KUBECTL -n "$NS" create secret generic ope-api \
+            --dry-run=client -o yaml | "$KUBECTL" apply -f -
+          "$KUBECTL" -n "$NS" create secret generic ope-api \
             --from-literal=api-keys="$OPE_API_KEYS_CLEAN" \
-            --dry-run=client -o yaml | $KUBECTL apply -f -
+            --dry-run=client -o yaml | "$KUBECTL" apply -f -
 
       - name: Apply data services
         run: |
           set -e
-          $KUBECTL apply -f k8s/postgres.yaml
-          $KUBECTL apply -f k8s/redis.yaml
-          $KUBECTL -n "$NS" rollout status deploy/postgres --timeout=180s
-          $KUBECTL -n "$NS" rollout status deploy/redis --timeout=120s
+          "$KUBECTL" apply -f k8s/postgres.yaml
+          "$KUBECTL" apply -f k8s/redis.yaml
+          "$KUBECTL" -n "$NS" rollout status deploy/postgres --timeout=180s
+          "$KUBECTL" -n "$NS" rollout status deploy/redis --timeout=120s
 
       - name: Wire internal service addresses
         env:
           POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
         run: |
           set -e
-          POSTGRES_HOST="$($KUBECTL -n "$NS" get svc postgres -o jsonpath='{.spec.clusterIP}')"
-          REDIS_HOST="$($KUBECTL -n "$NS" get svc redis -o jsonpath='{.spec.clusterIP}')"
+          POSTGRES_HOST="$("$KUBECTL" -n "$NS" get svc postgres -o jsonpath='{.spec.clusterIP}')"
+          REDIS_HOST="$("$KUBECTL" -n "$NS" get svc redis -o jsonpath='{.spec.clusterIP}')"
           POSTGRES_DSN="$(POSTGRES_PASSWORD="$POSTGRES_PASSWORD" POSTGRES_HOST="$POSTGRES_HOST" python3 - <<'PY'
           import os
           from urllib.parse import quote
@@ -137,16 +130,16 @@ jobs:
           print(f'postgresql://ope:{password}@{host}:5432/ope')
           PY
           )"
-          $KUBECTL -n "$NS" create secret generic ope-db \
+          "$KUBECTL" -n "$NS" create secret generic ope-db \
             --from-literal=postgres-password="$POSTGRES_PASSWORD" \
             --from-literal=postgres-dsn="$POSTGRES_DSN" \
-            --dry-run=client -o yaml | $KUBECTL apply -f -
+            --dry-run=client -o yaml | "$KUBECTL" apply -f -
           echo "REDIS_URL=redis://$REDIS_HOST:6379/0" >> "$GITHUB_ENV"
 
       - name: DNS smoke
         run: |
           set +e
-          $KUBECTL -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
+          "$KUBECTL" -n "$NS" run "dns-smoke-$GITHUB_RUN_ID" --rm -i --restart=Never \
             --image=busybox:1.36 -- \
             sh -c "cat /etc/resolv.conf; nslookup kubernetes.default.svc.cluster.local; nslookup postgres.$NS.svc.cluster.local; nslookup redis.$NS.svc.cluster.local; nslookup litellm.$NS.svc.cluster.local"
           exit 0
@@ -156,31 +149,31 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.OPE_POSTGRES_PASSWORD }}
         run: |
           set -e
-          $KUBECTL -n "$NS" exec -i deploy/postgres -- env PGPASSWORD="$POSTGRES_PASSWORD" \
+          "$KUBECTL" -n "$NS" exec -i deploy/postgres -- env PGPASSWORD="$POSTGRES_PASSWORD" \
             psql -U ope -d ope -f - < migrations/001_initial_schema.sql
 
       - name: Apply LiteLLM and OPE Core
         run: |
           set -e
-          $KUBECTL apply -f k8s/litellm.yaml
-          $KUBECTL apply -f k8s/ope-core.yaml
-          $KUBECTL apply -f k8s/tool-runner.yaml
-          $KUBECTL apply -f k8s/ingress.yaml
-          LITELLM_HOST="$($KUBECTL -n "$NS" get svc litellm -o jsonpath='{.spec.clusterIP}')"
-          $KUBECTL -n "$NS" set env deploy/ope-core \
+          "$KUBECTL" apply -f k8s/litellm.yaml
+          "$KUBECTL" apply -f k8s/ope-core.yaml
+          "$KUBECTL" apply -f k8s/tool-runner.yaml
+          "$KUBECTL" apply -f k8s/ingress.yaml
+          LITELLM_HOST="$("$KUBECTL" -n "$NS" get svc litellm -o jsonpath='{.spec.clusterIP}')"
+          "$KUBECTL" -n "$NS" set env deploy/ope-core \
             REDIS_URL="$REDIS_URL" \
             LITELLM_BASE_URL="http://$LITELLM_HOST:4000"
-          $KUBECTL -n "$NS" set image deploy/ope-core ope-core="$OPE_IMAGE"
-          $KUBECTL -n "$NS" set image deploy/ope-tool-runner ope-tool-runner="$OPE_IMAGE"
-          $KUBECTL -n "$NS" rollout restart deploy/litellm
-          $KUBECTL -n "$NS" rollout restart deploy/ope-core
-          $KUBECTL -n "$NS" rollout status deploy/litellm --timeout=300s
-          $KUBECTL -n "$NS" rollout status deploy/ope-core --timeout=300s
+          "$KUBECTL" -n "$NS" set image deploy/ope-core ope-core="$OPE_IMAGE"
+          "$KUBECTL" -n "$NS" set image deploy/ope-tool-runner ope-tool-runner="$OPE_IMAGE"
+          "$KUBECTL" -n "$NS" rollout restart deploy/litellm
+          "$KUBECTL" -n "$NS" rollout restart deploy/ope-core
+          "$KUBECTL" -n "$NS" rollout status deploy/litellm --timeout=300s
+          "$KUBECTL" -n "$NS" rollout status deploy/ope-core --timeout=300s
 
       - name: Smoke endpoints from OPE container
         run: |
           set -e
-          $KUBECTL -n "$NS" exec deploy/ope-core -- python -c "import urllib.request; [print(urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=10).read().decode()) for path in ('/health', '/ready')]"
+          "$KUBECTL" -n "$NS" exec deploy/ope-core -- python -c "import urllib.request; [print(urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=10).read().decode()) for path in ('/health', '/ready')]"
 
       - name: Smoke tailnet NodePort
         run: |
@@ -212,20 +205,20 @@ jobs:
         if: failure()
         run: |
           set +e
-          $KUBECTL -n "$NS" get all -o wide
-          $KUBECTL -n "$NS" get events --sort-by=.lastTimestamp | tail -80
-          $KUBECTL -n "$NS" describe deploy/litellm
-          $KUBECTL -n "$NS" describe deploy/ope-core
-          $KUBECTL -n "$NS" describe ingress
-          $KUBECTL -n "$NS" describe pods -l app=ope-core
-          $KUBECTL -n "$NS" describe pods -l app=litellm
-          $KUBECTL -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
-          for pod in $($KUBECTL -n "$NS" get pods -l app=ope-core -o name); do
+          "$KUBECTL" -n "$NS" get all -o wide
+          "$KUBECTL" -n "$NS" get events --sort-by=.lastTimestamp | tail -80
+          "$KUBECTL" -n "$NS" describe deploy/litellm
+          "$KUBECTL" -n "$NS" describe deploy/ope-core
+          "$KUBECTL" -n "$NS" describe ingress
+          "$KUBECTL" -n "$NS" describe pods -l app=ope-core
+          "$KUBECTL" -n "$NS" describe pods -l app=litellm
+          "$KUBECTL" -n "$NS" logs deploy/ope-core --all-containers=true --tail=200
+          for pod in $("$KUBECTL" -n "$NS" get pods -l app=ope-core -o name); do
             echo "---- previous logs: $pod ----"
-            $KUBECTL -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
+            "$KUBECTL" -n "$NS" logs "$pod" --all-containers=true --previous --tail=200 || true
           done
-          $KUBECTL -n "$NS" logs deploy/litellm --all-containers=true --tail=200
-          $KUBECTL -n kube-system get pods -o wide
-          $KUBECTL -n kube-system get svc -o wide
-          $KUBECTL -n kube-system logs deploy/coredns --tail=120 || true
-          $KUBECTL -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
+          "$KUBECTL" -n "$NS" logs deploy/litellm --all-containers=true --tail=200
+          "$KUBECTL" -n kube-system get pods -o wide
+          "$KUBECTL" -n kube-system get svc -o wide
+          "$KUBECTL" -n kube-system logs deploy/coredns --tail=120 || true
+          "$KUBECTL" -n kube-system logs -l k8s-app=kube-dns --tail=120 || true
