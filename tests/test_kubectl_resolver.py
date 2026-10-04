@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import unittest
 
@@ -26,7 +27,11 @@ class KubectlResolverTests(unittest.TestCase):
                                  'shift 2\nexport MOCK_ROOT=1\nexec "$@"\n')
             client.chmod(0o700)
             fake_sudo.chmod(0o700)
-            env = dict(os.environ, PATH=f"{root}:/usr/bin:/bin", KUBECONFIG=str(config),
+            # Hosted runners may already have kubectl installed. Restrict the
+            # fixture PATH so the k3s-only case cannot select that real client.
+            for name in ("bash", "chmod"):
+                (root / name).symlink_to(shutil.which(name))
+            env = dict(os.environ, PATH=str(root), KUBECONFIG=str(config),
                        RUNNER_TEMP=tmp, GITHUB_ENV=str(env_file), MOCK_ARGS=str(log),
                        MOCK_DIRECT=str(direct), MOCK_SUDO=str(sudo))
             result = subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True)
