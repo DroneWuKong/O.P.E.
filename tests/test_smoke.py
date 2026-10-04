@@ -28,23 +28,20 @@ def test_ui_index() -> None:
     response = client.get('/ui/')
 
     assert response.status_code == 200
-    assert 'O.P.E. Chat' in response.text
-    assert 'Upper Midwest voice' in response.text
-    assert 'Quick prompts' in response.text
-    assert 'What can you do?' in response.text
-    assert 'Retry Last' in response.text
-    assert 'Export' in response.text
-    assert 'Chats' in response.text
-    assert 'New chat' in response.text
-    assert 'sessionPanel' in response.text
-    assert 'Connectors' in response.text
-    assert 'Approval Inbox' in response.text
-    assert 'approvalsPanel' in response.text
-    assert 'approvalStatsPanel' in response.text
-    assert 'Local Files' in response.text
-    assert 'uploadForm' in response.text
-    assert 'Queue Local Draft' in response.text
-    assert 'draftJobForm' in response.text
+    assert '<title>O.P.E.</title>' in response.text
+    assert 'What needs to get done?' in response.text
+    assert 'for="queryInput">Mission</label>' in response.text
+    assert 'type="submit">Execute</button>' in response.text
+    assert '<summary>Advanced</summary>' in response.text
+    # These controls are the contract between the served page and app.js.
+    # Check their IDs so copy changes do not hide missing functionality.
+    for control_id in (
+        'askForm', 'queryInput', 'apiKeyInput', 'askButton', 'planButton',
+        'answerOutput', 'requestState', 'footerHealth', 'retryButton',
+        'exportChatButton', 'newChatButton', 'sessionPanel', 'connectorsTab',
+        'approvalsPanel', 'approvalStatsPanel', 'uploadForm', 'draftJobForm',
+    ):
+        assert f'id="{control_id}"' in response.text
 
 
 def test_health() -> None:
