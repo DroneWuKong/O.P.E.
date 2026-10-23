@@ -218,3 +218,88 @@ async def test_run_once_fails_non_allowlisted_job(monkeypatch) -> None:
     monkeypatch.setattr(tool_runner, 'finish_claimed_tool_job', fake_finish)
 
     assert await tool_runner.run_once() is True
+
+
+@pytest.mark.asyncio
+async def test_run_once_skips_job_cancelled_before_heartbeat(monkeypatch) -> None:
+    claimed_job = ToolJob(
+        id='job-cancelled', tool_name='noop', action='echo', payload={},
+        status='running', worker_id='worker-a',
+    )
+    # Keep the returned claim snapshot separate from the current queue row.
+    queue_job = claimed_job.model_copy()
+    executed = []
+    completed = []
+
+    async def fake_claim(req):
+        nonlocal queue_job
+        # An operator cancels after the claim but before the initial heartbeat.
+        queue_job = queue_job.model_copy(update={'status': 'cancelled', 'worker_id': None})
+        return claimed_job
+
+    async def fake_heartbeat(job_id, req):
+        assert job_id == queue_job.id
+        assert req.worker_id == 'worker-a'
+        if queue_job.status != 'running' or queue_job.worker_id != req.worker_id:
+            return None
+        return queue_job
+
+    def fake_execute(job):
+        executed.append(job.id)
+        return {'ok': True}
+
+    async def fake_finish(job_id, **kwargs):
+        completed.append((job_id, kwargs['status']))
+        return None
+
+    monkeypatch.setattr(tool_runner, 'get_settings', lambda: SimpleNamespace(
+        tool_runner_worker_id='worker-a',
+        tool_runner_project=None,
+        tool_runner_lease_seconds=300,
+    ))
+    monkeypatch.setattr(tool_runner, 'claim_next_tool_job', fake_claim)
+    monkeypatch.setattr(tool_runner, 'heartbeat_tool_job', fake_heartbeat)
+    monkeypatch.setattr(tool_runner, 'execute_allowlisted_tool', fake_execute)
+    monkeypatch.setattr(tool_runner, 'finish_claimed_tool_job', fake_finish)
+
+    assert await tool_runner.run_once() is False
+    assert executed == []
+    assert completed == []
+    assert queue_job.status == 'cancelled'
+
+
+@pytest.mark.asyncio
+async def test_run_once_does_not_execute_or_finish_on_heartbeat_error(monkeypatch) -> None:
+    job = ToolJob(id='job-1', tool_name='noop', action='echo', payload={}, status='running')
+    executed = []
+    completed = []
+
+    async def fake_claim(req):
+        return job
+
+    async def fake_heartbeat(job_id, req):
+        raise ConnectionError('heartbeat unavailable')
+
+    def fake_execute(job):
+        executed.append(job.id)
+        return {'ok': True}
+
+    async def fake_finish(job_id, **kwargs):
+        completed.append(job_id)
+        return job
+
+    monkeypatch.setattr(tool_runner, 'get_settings', lambda: SimpleNamespace(
+        tool_runner_worker_id='worker-a',
+        tool_runner_project=None,
+        tool_runner_lease_seconds=300,
+    ))
+    monkeypatch.setattr(tool_runner, 'claim_next_tool_job', fake_claim)
+    monkeypatch.setattr(tool_runner, 'heartbeat_tool_job', fake_heartbeat)
+    monkeypatch.setattr(tool_runner, 'execute_allowlisted_tool', fake_execute)
+    monkeypatch.setattr(tool_runner, 'finish_claimed_tool_job', fake_finish)
+
+    with pytest.raises(ConnectionError, match='heartbeat unavailable'):
+        await tool_runner.run_once()
+
+    assert executed == []
+    assert completed == []
