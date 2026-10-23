@@ -38,13 +38,16 @@ async def run_once() -> bool:
     if job is None:
         return False
 
-    await heartbeat_tool_job(
+    confirmed_job = await heartbeat_tool_job(
         job.id,
         ToolJobHeartbeatRequest(
             worker_id=settings.tool_runner_worker_id,
             lease_seconds=settings.tool_runner_lease_seconds,
         ),
     )
+    if confirmed_job is None:
+        logger.warning('skipping job after initial heartbeat could not confirm ownership: %s', job.id)
+        return False
 
     try:
         result = execute_allowlisted_tool(job)
